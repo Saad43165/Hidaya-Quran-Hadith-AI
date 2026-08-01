@@ -1,0 +1,37 @@
+{
+  "common": { "appName": "کتاب اے آئی", "loading": "لوڈ ہو رہا ہے...", "retry": "دوبارہ کوشش کریں", "ayahOfDay": "آج کی آیت", "hadithOfDay": "آج کی حدیث" },
+  "onboarding": {
+    "title1": "قرآن پڑھیں، خوبصورتی سے", "subtitle1": "عربی متن، ترجمہ اور آواز، ہمیشہ آپ کی دسترس میں۔",
+    "title2": "باب وار حدیث", "subtitle2": "تمام 10 بڑے مجموعوں کو موضوع کے مطابق براؤز کریں۔",
+    "title3": "پوچھیں، اور سمجھیں", "subtitle3": "آپ کے مطالعے سے متعلق سوالات کے لیے ایک AI ساتھی۔",
+    "getStarted": "شروع کریں", "skip": "نظر انداز کریں"
+  },
+  "nav": { "home": "ہوم", "quran": "قرآن", "hadith": "حدیث", "prayer": "نماز", "library": "لائبریری", "assistant": "معاون", "settings": "ترتیبات" },
+  "home": { "greeting": "السلام علیکم", "continueReading": "پڑھنا جاری رکھیں", "quickAccess": "فوری رسائی", "saved": "محفوظ" },
+  "quran": { "surahs": "سورتیں", "ayahs": "آیات", "meccan": "مکی", "medinan": "مدنی", "bySurah": "سورت کے مطابق", "byJuz": "پارہ کے مطابق" },
+  "hadith": { "continueReading": "پڑھنا جاری رکھیں", "allChapters": "تمام ابواب" },
+  "library": { "discover": "دریافت کریں", "searchPlaceholder": "کتابیں تلاش کریں..." },
+  "prayer": {
+    "prayerTimes": "نماز کے اوقات", "qibla": "قبلہ کی سمت", "nextPrayer": "اگلی نماز",
+    "enableAll": "تمام نماز یاد دہانیاں فعال کریں", "sunrise": "طلوع آفتاب",
+    "towardMecca": "مکہ کی طرف", "fromNorth": "شمال سے"
+  },
+  "assistant": { "title": "AI معاون", "placeholder": "سوال پوچھیں...", "guestPrompt": "AI معاون سے بات کرنے کے لیے سائن ان کریں۔", "thinking": "سوچ رہا ہے..." },
+  "settings": {
+    "language": "زبان", "about": "معلومات", "account": "اکاؤنٹ", "signOut": "سائن آؤٹ",
+    "guestLabel": "مہمان کے طور پر براؤز کر رہے ہیں", "dataStorage": "ڈیٹا اور اسٹوریج",
+    "viewBookmarks": "بک مارکس دیکھیں", "clearCache": "آف لائن کیش صاف کریں",
+    "clearCacheMeta": "بک مارکس محفوظ رہیں گے", "cacheCleared": "کیش صاف ہو گئی",
+    "clearBookmarks": "تمام بک مارکس حذف کریں", "bookmarks": "بک مارکس"
+  },
+  "auth": {
+    "welcomeTitle": "کتاب اے آئی میں خوش آمدید", "welcomeSubtitle": "اپنے آلات پر پڑھائی کو ہم آہنگ کرنے کے لیے سائن ان کریں۔",
+    "name": "نام", "email": "ای میل", "password": "پاسورڈ",
+    "signIn": "سائن ان کریں", "signUp": "اکاؤنٹ بنائیں",
+    "noAccount": "اکاؤنٹ نہیں ہے؟ سائن اپ کریں",
+    "haveAccount": "پہلے سے اکاؤنٹ ہے؟ سائن ان کریں",
+    "forgotPassword": "پاسورڈ بھول گئے؟", "continueAsGuest": "مہمان کے طور پر جاری رکھیں",
+    "resetPasswordSent": "پاسورڈ ری سیٹ ای میل بھیج دی گئی ہے۔",
+    "notConfiguredNotice": "Firebase ابھی ترتیب نہیں دیا گیا۔"
+  }
+}

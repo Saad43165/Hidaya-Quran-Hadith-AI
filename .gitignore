@@ -1,0 +1,27 @@
+# Expo / React Native
+node_modules/
+.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.env
+.env.local
+.env.production
+
+# App Store
+google-play-service-account.json
+
+# Firebase
+service-account.json
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/

@@ -1,0 +1,37 @@
+{
+  "common": { "appName": "كتاب AI", "loading": "جارٍ التحميل...", "retry": "أعد المحاولة", "ayahOfDay": "آية اليوم", "hadithOfDay": "حديث اليوم" },
+  "onboarding": {
+    "title1": "اقرأ القرآن بجمال", "subtitle1": "النص العربي مع الترجمة والصوت، دائمًا في متناول يدك.",
+    "title2": "الحديث بالأبواب", "subtitle2": "تصفح 10 مجموعات كبرى مرتبة حسب الموضوع.",
+    "title3": "اسأل وافهم", "subtitle3": "رفيق ذكاء اصطناعي لأسئلتك حول ما تقرأ.",
+    "getStarted": "ابدأ الآن", "skip": "تخطي"
+  },
+  "nav": { "home": "الرئيسية", "quran": "القرآن", "hadith": "الحديث", "prayer": "الصلاة", "library": "المكتبة", "assistant": "المساعد", "settings": "الإعدادات" },
+  "home": { "greeting": "السلام عليكم", "continueReading": "متابعة القراءة", "quickAccess": "الوصول السريع", "saved": "المحفوظات" },
+  "quran": { "surahs": "السور", "ayahs": "الآيات", "meccan": "مكية", "medinan": "مدنية", "bySurah": "حسب السورة", "byJuz": "حسب الجزء" },
+  "hadith": { "continueReading": "متابعة القراءة", "allChapters": "جميع الأبواب" },
+  "library": { "discover": "استكشف", "searchPlaceholder": "ابحث عن كتب..." },
+  "prayer": {
+    "prayerTimes": "أوقات الصلاة", "qibla": "اتجاه القبلة", "nextPrayer": "الصلاة القادمة",
+    "enableAll": "تفعيل جميع تنبيهات الصلاة", "sunrise": "الشروق",
+    "towardMecca": "باتجاه مكة", "fromNorth": "من الشمال"
+  },
+  "assistant": { "title": "المساعد الذكي", "placeholder": "اطرح سؤالاً...", "guestPrompt": "سجّل الدخول للدردشة مع المساعد.", "thinking": "يفكر..." },
+  "settings": {
+    "language": "اللغة", "about": "حول التطبيق", "account": "الحساب", "signOut": "تسجيل الخروج",
+    "guestLabel": "تصفح كضيف", "dataStorage": "البيانات والتخزين",
+    "viewBookmarks": "عرض الإشارات", "clearCache": "مسح ذاكرة التخزين المؤقت",
+    "clearCacheMeta": "تبقى الإشارات المرجعية", "cacheCleared": "تم المسح",
+    "clearBookmarks": "مسح جميع الإشارات", "bookmarks": "الإشارات المرجعية"
+  },
+  "auth": {
+    "welcomeTitle": "مرحبًا بك في كتاب AI", "welcomeSubtitle": "سجّل الدخول لمزامنة قراءتك.",
+    "name": "الاسم", "email": "البريد الإلكتروني", "password": "كلمة المرور",
+    "signIn": "تسجيل الدخول", "signUp": "إنشاء حساب",
+    "noAccount": "ليس لديك حساب؟ أنشئ حسابًا",
+    "haveAccount": "لديك حساب؟ سجّل الدخول",
+    "forgotPassword": "نسيت كلمة المرور؟", "continueAsGuest": "المتابعة كضيف",
+    "resetPasswordSent": "تم إرسال بريد إعادة تعيين كلمة المرور.",
+    "notConfiguredNotice": "لم يتم إعداد Firebase بعد."
+  }
+}

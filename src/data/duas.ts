@@ -1,0 +1,176 @@
+export interface Dua {
+  id: string;
+  title: string;
+  category: string;
+  arabic: string;
+  transliteration: string;
+  translation: string;
+  reference?: string;
+}
+
+export const DUA_CATEGORIES = [
+  'Morning & Evening', 'Prayer', 'Food & Drink', 'Sleep', 'Travel',
+  'Protection', 'Forgiveness', 'Gratitude', 'Distress', 'Family',
+] as const;
+
+export const DUAS: Dua[] = [
+  // Morning & Evening
+  { id: 'm1', category: 'Morning & Evening', title: 'Morning Remembrance',
+    arabic: 'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ',
+    transliteration: "Asbahna wa asbahal mulku lillah walhamdu lillah",
+    translation: 'We have entered upon the morning and upon the morning has the dominion of Allah, and all praise is for Allah.',
+    reference: 'Abu Dawud 5077' },
+  { id: 'm2', category: 'Morning & Evening', title: 'Evening Remembrance',
+    arabic: 'أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ',
+    transliteration: "Amsayna wa amsal mulku lillah walhamdu lillah",
+    translation: 'We have entered upon the evening and upon the evening has the dominion of Allah, and all praise is for Allah.',
+    reference: 'Abu Dawud 5077' },
+  { id: 'm3', category: 'Morning & Evening', title: 'Sayyid al-Istighfar',
+    arabic: 'اللَّهُمَّ أَنْتَ رَبِّي لاَ إِلَهَ إِلاَّ أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ',
+    transliteration: "Allahumma anta rabbi la ilaha illa anta, khalaqtani wa ana abduk",
+    translation: 'O Allah, You are my Lord. None has the right to be worshipped except You. You created me and I am Your slave.',
+    reference: 'Bukhari 6306' },
+  { id: 'm4', category: 'Morning & Evening', title: 'Protection in Morning',
+    arabic: 'بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الأَرْضِ وَلَا فِي السَّمَاءِ',
+    transliteration: "Bismillahil-lazi la yadurru ma'asmihi shay'un fil-ardi wa la fis-sama'",
+    translation: "In the name of Allah, with Whose name nothing on earth or in the heavens can cause harm.",
+    reference: 'Abu Dawud 5088' },
+
+  // Prayer
+  { id: 'p1', category: 'Prayer', title: 'Before Prayer (Wudu)',
+    arabic: 'بِسْمِ اللَّهِ',
+    transliteration: 'Bismillah',
+    translation: 'In the name of Allah.',
+    reference: 'Abu Dawud 101' },
+  { id: 'p2', category: 'Prayer', title: 'After Wudu',
+    arabic: 'أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ',
+    transliteration: "Ashhadu an la ilaha illallahu wahdahu la sharika lah, wa ashhadu anna Muhammadan abduhu wa rasuluh",
+    translation: 'I testify that there is no god but Allah alone, with no partner, and that Muhammad is His servant and Messenger.',
+    reference: 'Muslim 234' },
+  { id: 'p3', category: 'Prayer', title: 'Opening Supplication (Istiftah)',
+    arabic: 'اللَّهُمَّ بَاعِدْ بَيْنِي وَبَيْنَ خَطَايَايَ كَمَا بَاعَدْتَ بَيْنَ الْمَشْرِقِ وَالْمَغْرِبِ',
+    transliteration: "Allahumma ba'id bayni wa bayna khatayaya kama ba'adta baynal-mashriqi wal-maghrib",
+    translation: 'O Allah, distance me from my sins as You have distanced the East from the West.',
+    reference: 'Bukhari 744' },
+  { id: 'p4', category: 'Prayer', title: 'In Ruku',
+    arabic: 'سُبْحَانَ رَبِّيَ الْعَظِيمِ',
+    transliteration: "Subhana Rabbiyal Azim",
+    translation: 'Glory be to my Lord, the Most Great.',
+    reference: 'Muslim 772' },
+  { id: 'p5', category: 'Prayer', title: 'In Sujud',
+    arabic: 'سُبْحَانَ رَبِّيَ الأَعْلَى',
+    transliteration: "Subhana Rabbiyal A'la",
+    translation: 'Glory be to my Lord, the Most High.',
+    reference: 'Muslim 772' },
+
+  // Food & Drink
+  { id: 'f1', category: 'Food & Drink', title: 'Before Eating',
+    arabic: 'بِسْمِ اللَّهِ',
+    transliteration: 'Bismillah',
+    translation: 'In the name of Allah.',
+    reference: 'Abu Dawud 3767' },
+  { id: 'f2', category: 'Food & Drink', title: 'After Eating',
+    arabic: 'الْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنِي هَذَا وَرَزَقَنِيهِ مِنْ غَيْرِ حَوْلٍ مِنِّي وَلَا قُوَّةٍ',
+    transliteration: "Alhamdu lillahil-lazi at'amani haza wa razaqanihi min ghayri hawlin minni wa la quwwah",
+    translation: 'Praise be to Allah who fed me this and provided it for me without any strength or power on my part.',
+    reference: 'Tirmidhi 3458' },
+  { id: 'f3', category: 'Food & Drink', title: 'Before Drinking Water',
+    arabic: 'بِسْمِ اللَّهِ',
+    transliteration: 'Bismillah',
+    translation: 'In the name of Allah.',
+    reference: 'Tirmidhi 1885' },
+
+  // Sleep
+  { id: 's1', category: 'Sleep', title: 'Before Sleeping',
+    arabic: 'بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا',
+    transliteration: "Bismika Allahumma amutu wa ahya",
+    translation: 'In Your name, O Allah, I die and I live.',
+    reference: 'Bukhari 6324' },
+  { id: 's2', category: 'Sleep', title: 'Upon Waking',
+    arabic: 'الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ',
+    transliteration: "Alhamdulillahil-lazi ahyana ba'da ma amatana wa ilayhin-nushur",
+    translation: 'Praise be to Allah who gave us life after causing us to die, and to Him is the resurrection.',
+    reference: 'Bukhari 6325' },
+  { id: 's3', category: 'Sleep', title: 'Ayat al-Kursi Before Sleep',
+    arabic: 'اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ',
+    transliteration: "Allahu la ilaha illa huwal-Hayyul-Qayyum",
+    translation: 'Allah — there is no deity except Him, the Ever-Living, the Sustainer of all existence. (Ayat al-Kursi 2:255)',
+    reference: 'Bukhari 2311' },
+
+  // Travel
+  { id: 't1', category: 'Travel', title: 'Dua for Travel',
+    arabic: 'سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ',
+    transliteration: "Subhanal-lazi sakhkhara lana haza wa ma kunna lahu muqrinin",
+    translation: 'Glory be to the One who has subjected this for us, and we were not able to do so ourselves.',
+    reference: 'Muslim 1342' },
+  { id: 't2', category: 'Travel', title: 'Entering a City',
+    arabic: 'اللَّهُمَّ رَبَّ السَّمَاوَاتِ السَّبْعِ وَمَا أَظْلَلْنَ، وَرَبَّ الأَرَضِينَ السَّبْعِ وَمَا أَقْلَلْنَ',
+    transliteration: "Allahumma rabbas-samawatis-sab' wa ma azlalna, wa rabbal-aradinas-sab' wa ma aqlalna",
+    translation: 'O Allah, Lord of the seven heavens and what they shade, Lord of the seven earths and what they carry.',
+    reference: 'Ibn al-Sunni 524' },
+
+  // Protection
+  { id: 'pr1', category: 'Protection', title: 'Morning Protection',
+    arabic: 'أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ',
+    transliteration: "A'udhu bikalimatillahit-tammati min sharri ma khalaq",
+    translation: 'I seek refuge in the perfect words of Allah from the evil of what He has created.',
+    reference: 'Muslim 2708' },
+  { id: 'pr2', category: 'Protection', title: 'Against Evil Eye',
+    arabic: 'أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ',
+    transliteration: "A'udhu billahi minash-shaytanir-rajim",
+    translation: 'I seek refuge in Allah from the accursed devil.',
+    reference: 'Quran 16:98' },
+  { id: 'pr3', category: 'Protection', title: 'Entering Home',
+    arabic: 'بِسْمِ اللَّهِ وَلَجْنَا، وَبِسْمِ اللَّهِ خَرَجْنَا، وَعَلَى اللَّهِ رَبِّنَا تَوَكَّلْنَا',
+    transliteration: "Bismillahi walajna, wa bismillahi kharajna, wa alar-rabbina tawakkalna",
+    translation: 'In the name of Allah we enter and in the name of Allah we leave, and upon Allah our Lord we rely.',
+    reference: 'Abu Dawud 5096' },
+
+  // Forgiveness
+  { id: 'fo1', category: 'Forgiveness', title: 'Seeking Forgiveness',
+    arabic: 'رَبِّ اغْفِرْ لِي وَتُبْ عَلَيَّ إِنَّكَ أَنْتَ التَّوَّابُ الرَّحِيمُ',
+    transliteration: "Rabbighfir li wa tub alayya innaka antat-tawwabur-rahim",
+    translation: 'My Lord, forgive me and accept my repentance. Verily, You are the Accepter of repentance, the Merciful.',
+    reference: 'Abu Dawud 1516' },
+  { id: 'fo2', category: 'Forgiveness', title: 'Complete Forgiveness Dua',
+    arabic: 'اللَّهُمَّ اغْفِرْ لِي ذَنْبِي كُلَّهُ، دِقَّهُ وَجِلَّهُ، وَأَوَّلَهُ وَآخِرَهُ',
+    transliteration: "Allahummaghfir li zanbi kullahu, diqqahu wa jillahu, wa awwalahu wa akhirah",
+    translation: 'O Allah, forgive me all my sins, small and great, the first and the last, the open and the hidden.',
+    reference: 'Muslim 483' },
+
+  // Gratitude
+  { id: 'g1', category: 'Gratitude', title: 'Dua for Gratitude',
+    arabic: 'اللَّهُمَّ أَعِنِّي عَلَى ذِكْرِكَ وَشُكْرِكَ وَحُسْنِ عِبَادَتِكَ',
+    transliteration: "Allahumma a'inni ala zikrika wa shukrika wa husni ibadatik",
+    translation: 'O Allah, help me to remember You, to thank You, and to worship You in the best manner.',
+    reference: 'Abu Dawud 1522' },
+
+  // Distress
+  { id: 'd1', category: 'Distress', title: 'Dua of Yunus (a.s.)',
+    arabic: 'لَا إِلَهَ إِلَّا أَنتَ سُبْحَانَكَ إِنِّي كُنتُ مِنَ الظَّالِمِينَ',
+    transliteration: "La ilaha illa anta subhanaka inni kuntu minaz-zalimin",
+    translation: 'There is no deity except You; exalted are You. Indeed, I have been of the wrongdoers.',
+    reference: 'Quran 21:87' },
+  { id: 'd2', category: 'Distress', title: 'In Times of Grief',
+    arabic: 'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
+    transliteration: "HasbunAllahu wa ni'mal wakil",
+    translation: 'Allah is sufficient for us, and He is the best disposer of affairs.',
+    reference: 'Quran 3:173' },
+  { id: 'd3', category: 'Distress', title: 'Dua for Anxiety',
+    arabic: 'اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ',
+    transliteration: "Allahumma inni a'udhu bika minal-hammi wal-hazan",
+    translation: 'O Allah, I seek refuge in You from anxiety and sorrow.',
+    reference: 'Bukhari 6369' },
+
+  // Family
+  { id: 'fa1', category: 'Family', title: 'For Parents',
+    arabic: 'رَّبِّ ارْحَمْهُمَا كَمَا رَبَّيَانِي صَغِيرًا',
+    transliteration: "Rabbir hamhuma kama rabbayani saghira",
+    translation: 'My Lord, have mercy on them as they raised me when I was small.',
+    reference: 'Quran 17:24' },
+  { id: 'fa2', category: 'Family', title: 'For Righteous Spouse & Children',
+    arabic: 'رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ',
+    transliteration: "Rabbana hab lana min azwajina wa zurriyyatina qurrata a'yun",
+    translation: "Our Lord, grant us from among our spouses and offspring comfort to our eyes.",
+    reference: 'Quran 25:74' },
+];
