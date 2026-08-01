@@ -6,6 +6,11 @@ import {
   onAuthStateChanged,
   updateProfile,
   User,
+  GoogleAuthProvider,
+  signInWithCredential,
+  signInWithPhoneNumber,
+  ApplicationVerifier,
+  ConfirmationResult
 } from 'firebase/auth';
 import { getFirebaseAuth } from './config';
 
@@ -45,6 +50,18 @@ export async function signOutUser(): Promise<void> {
 export async function resetPassword(email: string): Promise<void> {
   const auth = requireAuth();
   await sendPasswordResetEmail(auth, email);
+}
+
+export async function signInWithGoogleCredential(idToken: string): Promise<User> {
+  const auth = requireAuth();
+  const credential = GoogleAuthProvider.credential(idToken);
+  const userCredential = await signInWithCredential(auth, credential);
+  return userCredential.user;
+}
+
+export async function sendPhoneVerificationCode(phoneNumber: string, applicationVerifier: ApplicationVerifier): Promise<ConfirmationResult> {
+  const auth = requireAuth();
+  return signInWithPhoneNumber(auth, phoneNumber, applicationVerifier);
 }
 
 /**

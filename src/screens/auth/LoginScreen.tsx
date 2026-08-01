@@ -71,6 +71,11 @@ export function LoginScreen() {
             <View style={styles.divLine} /><Text style={styles.divText}>or</Text><View style={styles.divLine} />
           </View>
 
+          <AuthButton label="Sign in with Phone" onPress={() => nav.navigate('PhoneAuth')} variant="secondary" />
+          <View style={{height: spacing.md}} />
+          <AuthButton label="Sign in with Google" onPress={() => { /* TODO: Implement Google Auth */ }} variant="secondary" />
+          <View style={{height: spacing.md}} />
+
           <AuthButton label={t('auth.continueAsGuest')} onPress={continueAsGuest} variant="secondary" />
 
           <TouchableOpacity onPress={() => nav.navigate('SignUp')} style={styles.switchLink}>
