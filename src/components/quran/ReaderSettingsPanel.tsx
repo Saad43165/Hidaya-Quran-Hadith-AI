@@ -13,7 +13,7 @@ const FONT_SIZES = [18, 20, 22, 24, 26, 28, 32];
 const TRANSLATIONS: TranslationLanguage[] = ['en.sahih', 'ur.ahmedali', 'none'];
 
 export function ReaderSettingsPanel({ visible, onClose }: Props) {
-  const { fontSize, setFontSize, translationLang, setTranslationLang } = useQuranStore();
+  const { fontSize, setFontSize, translationLang, setTranslationLang, readingMode, setReadingMode } = useQuranStore();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -24,8 +24,27 @@ export function ReaderSettingsPanel({ visible, onClose }: Props) {
 
           <Text style={styles.title}>Reader Settings</Text>
 
+          {/* Reading Mode */}
+          <Text style={styles.sectionLabel}>READING MODE</Text>
+          <View style={styles.transGroup}>
+            {(['cards', 'flowing'] as const).map((mode) => (
+              <TouchableOpacity
+                key={mode}
+                style={[styles.transRow, readingMode === mode && styles.transRowActive]}
+                onPress={() => setReadingMode(mode)}
+              >
+                <Text style={[styles.transLabel, readingMode === mode && styles.transLabelActive]}>
+                  {mode === 'cards' ? 'Translation Cards' : 'Mushaf (Full Page)'}
+                </Text>
+                {readingMode === mode && (
+                  <Ionicons name="checkmark" size={16} color={colors.gold[500]} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+
           {/* Font size */}
-          <Text style={styles.sectionLabel}>ARABIC FONT SIZE</Text>
+          <Text style={[styles.sectionLabel, { marginTop: spacing.md }]}>ARABIC FONT SIZE</Text>
           <View style={styles.sizeRow}>
             <TouchableOpacity
               style={styles.sizeBtn}

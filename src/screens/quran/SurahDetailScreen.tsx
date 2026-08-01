@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +12,7 @@ import { ReaderSettingsPanel } from '../../components/quran/ReaderSettingsPanel'
 import { WordDetailModal } from '../../components/quran/WordDetailModal';
 import { fetchSurahDetail } from '../../services/api/quranApi';
 import { fetchWordByWordSurah, WordByWordAyah } from '../../services/api/wordApi';
-import { playVerse, stopCurrentAudio } from '../../services/audio/quranAudio';
+import { useAudioStore } from '../../store/useAudioStore';
 import { listBookmarks, addBookmark, removeBookmark } from '../../services/db/bookmarksRepo';
 import { setQuranProgress } from '../../services/db/progressRepo';
 import { useQuranStore } from '../../store/useQuranStore';
@@ -47,17 +48,18 @@ function toVocabWord(
 
 export function SurahDetailScreen() {
   const { params } = useRoute<SurahDetailRoute>();
-  const { fontSize, translationLang, wordByWordEnabled, setWordByWordEnabled, hydrate } = useQuranStore();
+  const { fontSize, translationLang, wordByWordEnabled, readingMode, setWordByWordEnabled, hydrate } = useQuranStore();
+  const { currentSurah, currentAyahIndex, isPlaying, play: playAudio, pause: pauseAudio, resume: resumeAudio } = useAudioStore();
+  
   const [surah, setSurah] = useState<SurahDetail | null>(null);
   const [wordData, setWordData] = useState<Map<number, WordByWordAyah>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [playingAyah, setPlayingAyah] = useState<number | null>(null);
   const [bookmarkedAyahs, setBookmarkedAyahs] = useState<Set<number>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [selectedWord, setSelectedWord] = useState<VocabularyWord | null>(null);
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<any>(null);
 
   const bookmarkId = (n: number) => `ayah:${params.surahNumber}:${n}`;
 
@@ -93,7 +95,6 @@ export function SurahDetailScreen() {
     hydrate();
     load();
     loadBookmarks();
-    return () => { stopCurrentAudio().catch(() => {}); };
   }, [load, loadBookmarks, hydrate]);
 
   useEffect(() => { if (surah) load(); }, [translationLang]);
@@ -114,14 +115,19 @@ export function SurahDetailScreen() {
   }, [surah, params.initialAyahNumber]);
 
   const handleAudio = async (ayah: Ayah) => {
-    if (playingAyah === ayah.numberInSurah) {
-      await stopCurrentAudio(); setPlayingAyah(null); return;
+    if (!surah) return;
+    const index = surah.ayahs.findIndex(a => a.numberInSurah === ayah.numberInSurah);
+    if (index === -1) return;
+
+    if (currentSurah?.number === surah.number && currentAyahIndex === index) {
+      if (isPlaying) {
+        pauseAudio();
+      } else {
+        resumeAudio();
+      }
+    } else {
+      await playAudio(surah, index);
     }
-    if (!ayah.number) return;
-    setPlayingAyah(ayah.numberInSurah);
-    try { await playVerse(ayah.number); }
-    catch { /* silent fail offline */ }
-    finally { setPlayingAyah(null); }
   };
 
   const handleToggleBookmark = async (ayah: Ayah) => {
@@ -150,57 +156,76 @@ export function SurahDetailScreen() {
   if (isLoading) return <ScreenContainer><LoadingView /></ScreenContainer>;
   if (error || !surah) return <ScreenContainer><ErrorView message={error ?? 'Not found'} onRetry={load} /></ScreenContainer>;
 
+  const renderHeader = (
+    <LinearGradient colors={gradients.heroNavy} style={styles.header}>
+      <View style={styles.headerDecor} />
+      {/* Settings + WBW toggle */}
+      <View style={styles.headerBtns}>
+        <TouchableOpacity
+          style={[styles.headerIconBtn, wordByWordEnabled && styles.headerIconBtnActive]}
+          onPress={() => setWordByWordEnabled(!wordByWordEnabled)}
+        >
+          <Text style={[styles.wbwBtnText, wordByWordEnabled && { color: colors.navy[900] }]}>Aa</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => setSettingsOpen(true)}>
+          <Ionicons name="text" size={16} color={colors.gold[400]} />
+          <Ionicons name="settings-outline" size={14} color="rgba(255,255,255,0.4)" />
+        </TouchableOpacity>
+      </View>
+      <Text style={[styles.arabicTitle, { fontFamily: 'Amiri_700Bold' }]}>{surah.name}</Text>
+      <Text style={styles.englishTitle}>{surah.englishName}</Text>
+      <Text style={styles.meaning}>{surah.englishNameTranslation}</Text>
+      <View style={styles.pills}>
+        <View style={styles.pill}><Text style={styles.pillText}>{surah.revelationType}</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>{surah.numberOfAyahs} Ayahs</Text></View>
+        <View style={styles.pill}>
+          <Text style={styles.pillText}>
+            {translationLang === 'none' ? 'Arabic Only' : translationLang === 'ur.ahmedali' ? 'Urdu' : 'English'}
+          </Text>
+        </View>
+      </View>
+      {params.surahNumber !== 1 && params.surahNumber !== 9 && (
+        <Text style={[styles.bismillah, { fontFamily: 'Amiri_400Regular' }]}>
+          بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+        </Text>
+      )}
+    </LinearGradient>
+  );
+
   return (
     <View style={{ flex: 1 }}>
       <ScreenContainer noPadding>
         <ReaderSettingsPanel visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
-        <FlatList
-          ref={listRef}
-          data={surah.ayahs}
-          keyExtractor={item => String(item.numberInSurah)}
-          contentContainerStyle={styles.list}
-          initialNumToRender={5}
-          maxToRenderPerBatch={5}
-          windowSize={5}
-          removeClippedSubviews
-          onScrollToIndexFailed={() => {}}
-          ListHeaderComponent={
-            <LinearGradient colors={gradients.heroNavy} style={styles.header}>
-              <View style={styles.headerDecor} />
-              {/* Settings + WBW toggle */}
-              <View style={styles.headerBtns}>
-                <TouchableOpacity
-                  style={[styles.headerIconBtn, wordByWordEnabled && styles.headerIconBtnActive]}
-                  onPress={() => setWordByWordEnabled(!wordByWordEnabled)}
-                >
-                  <Text style={[styles.wbwBtnText, wordByWordEnabled && { color: colors.navy[900] }]}>Aa</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.settingsBtn} onPress={() => setSettingsOpen(true)}>
-                  <Ionicons name="text" size={16} color={colors.gold[400]} />
-                  <Ionicons name="settings-outline" size={14} color="rgba(255,255,255,0.4)" />
-                </TouchableOpacity>
-              </View>
-              <Text style={[styles.arabicTitle, { fontFamily: 'Amiri_700Bold' }]}>{surah.name}</Text>
-              <Text style={styles.englishTitle}>{surah.englishName}</Text>
-              <Text style={styles.meaning}>{surah.englishNameTranslation}</Text>
-              <View style={styles.pills}>
-                <View style={styles.pill}><Text style={styles.pillText}>{surah.revelationType}</Text></View>
-                <View style={styles.pill}><Text style={styles.pillText}>{surah.numberOfAyahs} Ayahs</Text></View>
-                <View style={styles.pill}>
-                  <Text style={styles.pillText}>
-                    {translationLang === 'none' ? 'Arabic Only' : translationLang === 'ur.ahmedali' ? 'Urdu' : 'English'}
-                  </Text>
-                </View>
-              </View>
-              {params.surahNumber !== 1 && params.surahNumber !== 9 && (
-                <Text style={[styles.bismillah, { fontFamily: 'Amiri_400Regular' }]}>
-                  بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-                </Text>
-              )}
-            </LinearGradient>
-          }
+        {readingMode === 'flowing' ? (
+          <ScrollView style={styles.list} contentContainerStyle={{ paddingBottom: spacing.xxxl }}>
+            {renderHeader}
+            <View style={styles.flowingPage}>
+              <Text style={[styles.flowingText, { fontSize: fontSize, lineHeight: fontSize * 2.2 }]}>
+                {surah.ayahs.map((item, index) => {
+                  const cleanedText = (item.numberInSurah === 1 && params.surahNumber !== 1 && params.surahNumber !== 9)
+                    ? item.text.replace(/^بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ?/g, '').replace(/^بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ?/g, '').trim()
+                    : item.text;
+                  const marker = String(item.numberInSurah).replace(/[0-9]/g, d => String.fromCharCode(d.charCodeAt(0) + 1584));
+                  return `${cleanedText} ﴿${marker}﴾ `;
+                }).join('')}
+              </Text>
+            </View>
+          </ScrollView>
+        ) : (
+          <FlashList
+            ref={listRef}
+            data={surah.ayahs}
+            keyExtractor={item => String(item.numberInSurah)}
+            contentContainerStyle={styles.list}
+            // @ts-ignore
+            estimatedItemSize={250}
+            ListHeaderComponent={renderHeader}
           renderItem={({ item }) => {
             const wbwAyah = wordData.get(item.numberInSurah);
+            const isPlayingThisAyah = currentSurah?.number === params.surahNumber &&
+              currentAyahIndex === (surah?.ayahs.findIndex(a => a.numberInSurah === item.numberInSurah) ?? -1) &&
+              isPlaying;
+
             return (
               <View style={styles.ayahCard}>
                 <View style={styles.ayahTop}>
@@ -210,9 +235,9 @@ export function SurahDetailScreen() {
                   <View style={styles.ayahActions}>
                     <TouchableOpacity onPress={() => handleAudio(item)}>
                       <Ionicons
-                        name={playingAyah === item.numberInSurah ? 'pause-circle' : 'play-circle-outline'}
+                        name={isPlayingThisAyah ? 'pause-circle' : 'play-circle-outline'}
                         size={26}
-                        color={playingAyah === item.numberInSurah ? colors.gold[500] : colors.parchment[400]}
+                        color={isPlayingThisAyah ? '#D62828' : colors.parchment[400]}
                       />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleShareAyah(item)}>
@@ -255,7 +280,9 @@ export function SurahDetailScreen() {
                   </View>
                 ) : (
                   <Text style={[styles.arabicText, { fontSize, lineHeight: fontSize * 2, fontFamily: 'Amiri_400Regular' }]}>
-                    {item.text}
+                    {item.numberInSurah === 1 && params.surahNumber !== 1 && params.surahNumber !== 9
+                      ? item.text.replace(/^بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ?/g, '').replace(/^بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ?/g, '').trim()
+                      : item.text}
                   </Text>
                 )}
 
@@ -273,6 +300,7 @@ export function SurahDetailScreen() {
             );
           }}
         />
+        )}
       </ScreenContainer>
 
       <WordDetailModal word={selectedWord} onClose={() => setSelectedWord(null)} />
@@ -396,5 +424,18 @@ const styles = StyleSheet.create({
     fontSize: 17, lineHeight: 36,
     textAlign: 'right', writingDirection: 'rtl',
     color: colors.navy[900],
+  },
+  flowingPage: {
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    ...shadow.sm,
+  },
+  flowingText: {
+    color: colors.navy[950],
+    textAlign: 'justify',
+    writingDirection: 'rtl',
+    fontFamily: 'Amiri_400Regular',
   },
 });

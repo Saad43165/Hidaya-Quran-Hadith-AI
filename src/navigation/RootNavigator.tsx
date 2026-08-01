@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { I18nManager } from 'react-native';
+import { I18nManager, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { MiniPlayer } from '../components/audio/MiniPlayer';
+import { navigationRef } from './navigationRef';
 import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 import { SurahDetailScreen } from '../screens/quran/SurahDetailScreen';
 import { JuzDetailScreen } from '../screens/quran/JuzDetailScreen';
@@ -71,47 +73,51 @@ export function RootNavigator() {
   };
 
   return (
-    <NavigationContainer
-      theme={{
-        dark: isDark,
-        colors: { primary: colors.navy[800], background: bg, card, text, border, notification: colors.gold[500] },
-        fonts: {
-          regular: { fontFamily: 'System', fontWeight: '400' },
-          medium: { fontFamily: 'System', fontWeight: '500' },
-          bold: { fontFamily: 'System', fontWeight: '700' },
-          heavy: { fontFamily: 'System', fontWeight: '800' },
-        },
-      }}
-    >
-      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: bg } }}>
-        {!hasOnboarded ? (
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        ) : !(user || isGuest) ? (
-          <Stack.Screen name="Auth" component={AuthNavigator} />
-        ) : (
-          <>
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-            <Stack.Screen name="SurahDetail" component={SurahDetailScreen}
-              options={({ route }) => ({ headerShown: true, title: route.params.englishName, ...navHeaderStyle })} />
-            <Stack.Screen name="JuzDetail" component={JuzDetailScreen}
-              options={({ route }) => ({ headerShown: true, title: `Juz ${route.params.juzNumber}`, ...navHeaderStyle })} />
-            <Stack.Screen name="HadithCollectionDetail" component={HadithCollectionDetailScreen}
-              options={({ route }) => ({ headerShown: true, title: route.params.name, ...navHeaderStyle })} />
-            <Stack.Screen name="Bookmarks" component={BookmarksScreen}
-              options={{ headerShown: true, title: 'Bookmarks', ...navHeaderStyle }} />
-            <Stack.Screen name="Search" component={SearchScreen}
-              options={{ headerShown: false }} />
-            <Stack.Screen name="Tasbih" component={TasbihScreen}
-              options={{ headerShown: false }} />
-            <Stack.Screen name="Duas" component={DuaScreen}
-              options={{ headerShown: false }} />
-            <Stack.Screen name="NamesOfAllah" component={NamesOfAllahScreen}
-              options={{ headerShown: false }} />
-            <Stack.Screen name="Vocabulary" component={VocabularyScreen}
-              options={{ headerShown: false }} />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={{ flex: 1 }}>
+      <NavigationContainer
+        ref={navigationRef}
+        theme={{
+          dark: isDark,
+          colors: { primary: colors.navy[800], background: bg, card, text, border, notification: colors.gold[500] },
+          fonts: {
+            regular: { fontFamily: 'System', fontWeight: '400' },
+            medium: { fontFamily: 'System', fontWeight: '500' },
+            bold: { fontFamily: 'System', fontWeight: '700' },
+            heavy: { fontFamily: 'System', fontWeight: '800' },
+          },
+        }}
+      >
+        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: bg } }}>
+          {!hasOnboarded ? (
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          ) : !(user || isGuest) ? (
+            <Stack.Screen name="Auth" component={AuthNavigator} />
+          ) : (
+            <>
+              <Stack.Screen name="MainTabs" component={MainTabs} />
+              <Stack.Screen name="SurahDetail" component={SurahDetailScreen}
+                options={({ route }) => ({ headerShown: true, title: route.params.englishName, ...navHeaderStyle })} />
+              <Stack.Screen name="JuzDetail" component={JuzDetailScreen}
+                options={({ route }) => ({ headerShown: true, title: `Juz ${route.params.juzNumber}`, ...navHeaderStyle })} />
+              <Stack.Screen name="HadithCollectionDetail" component={HadithCollectionDetailScreen}
+                options={({ route }) => ({ headerShown: true, title: route.params.name, ...navHeaderStyle })} />
+              <Stack.Screen name="Bookmarks" component={BookmarksScreen}
+                options={{ headerShown: true, title: 'Bookmarks', ...navHeaderStyle }} />
+              <Stack.Screen name="Search" component={SearchScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen name="Tasbih" component={TasbihScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen name="Duas" component={DuaScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen name="NamesOfAllah" component={NamesOfAllahScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen name="Vocabulary" component={VocabularyScreen}
+                options={{ headerShown: false }} />
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+      <MiniPlayer />
+    </View>
   );
 }

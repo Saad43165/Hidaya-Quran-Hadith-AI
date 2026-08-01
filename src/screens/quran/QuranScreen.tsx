@@ -78,7 +78,7 @@ export function QuranScreen() {
                 color={activeTab === tab ? colors.navy[900] : 'rgba(255,255,255,0.5)'}
               />
               <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-                {tab === 'surah' ? 'By Surah' : 'By Juz'}
+                {tab === 'surah' ? 'By Surah' : 'By Para (Juz)'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -139,10 +139,10 @@ function JuzCard({ item, onPress }: { item: any; onPress: () => void }) {
       <TouchableOpacity style={styles.juzCard} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={1}>
         <View style={[styles.juzBadge, { backgroundColor: badgeColor }]}>
           <Text style={styles.juzBadgeNum}>{item.number}</Text>
-          <Text style={styles.juzBadgeLabel}>JUZ</Text>
+          <Text style={styles.juzBadgeLabel}>PARA</Text>
         </View>
         <View style={styles.juzInfo}>
-          <Text style={styles.juzEnglish}>{item.english}</Text>
+          <Text style={styles.juzEnglish}>Para {item.number} - {item.english}</Text>
           <Text style={[styles.juzArabic, { fontFamily: 'Amiri_400Regular' }]}>{item.arabic}</Text>
         </View>
         <View style={styles.juzStart}>

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CustomAlert } from '../../components/common/CustomAlert';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { LoadingView, ErrorView } from '../../components/common/AsyncStateView';
 import { PrayerTimeRow } from '../../components/prayer/PrayerTimeRow';
@@ -58,6 +59,13 @@ export function PrayerScreen() {
   const [notifPermission, setNotifPermission] = useState(false);
   const [calcMethod, setCalcMethod]       = useState<PrayerCalculationMethod>(2);
   const [methodPickerOpen, setMethodPickerOpen] = useState(false);
+  
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean; title: string; message?: string; buttons?: any[];
+  }>({ visible: false, title: '' });
+  const showAlert = (title: string, message?: string, buttons?: any[]) => setAlertConfig({ visible: true, title, message, buttons });
+  const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
+
   const notifLoaded = useRef(false);
   const savedCoords = useRef<{ latitude: number; longitude: number } | null>(null);
   const savedCity   = useRef<{ city: string; country: string } | null>(null);
@@ -131,7 +139,7 @@ export function PrayerScreen() {
 
   const handleTogglePrayer = async (prayer: PrayerName, enabled: boolean) => {
     if (!notifPermission) {
-      Alert.alert('Allow Notifications', 'KitaabAI needs notification permission to send prayer reminders.',
+      showAlert('Allow Notifications', 'KitaabAI needs notification permission to send prayer reminders.',
         [{ text: 'Cancel', style: 'cancel' }, { text: 'Open Settings', onPress: () => Linking.openSettings() }]);
       return;
     }
@@ -146,7 +154,7 @@ export function PrayerScreen() {
     if (!prayerTimes) return;
     const granted = await requestNotificationPermission();
     if (!granted) {
-      Alert.alert('Permission required', 'Allow notifications in Settings to receive prayer reminders.');
+      showAlert('Permission required', 'Allow notifications in Settings to receive prayer reminders.', [{ text: 'OK' }]);
       return;
     }
     setNotifPermission(true);
@@ -274,6 +282,13 @@ export function PrayerScreen() {
         )}
 
       </ScrollView>
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onDismiss={hideAlert}
+      />
     </ScreenContainer>
   );
 }

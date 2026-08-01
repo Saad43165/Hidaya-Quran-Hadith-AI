@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -7,7 +8,7 @@ import { LoadingView, ErrorView } from '../../components/common/AsyncStateView';
 import { BookmarkButton } from '../../components/bookmarks/BookmarkButton';
 import { ReaderSettingsPanel } from '../../components/quran/ReaderSettingsPanel';
 import { fetchJuzDetail } from '../../services/api/quranApi';
-import { playVerse, stopCurrentAudio } from '../../services/audio/quranAudio';
+import { useAudioStore } from '../../store/useAudioStore';
 import { listBookmarks, addBookmark, removeBookmark } from '../../services/db/bookmarksRepo';
 import { useQuranStore } from '../../store/useQuranStore';
 import { JUZ_LIST } from '../../data/juzData';
@@ -20,11 +21,12 @@ type JuzDetailRoute = RouteProp<RootStackParamList, 'JuzDetail'>;
 export function JuzDetailScreen() {
   const { params } = useRoute<JuzDetailRoute>();
   const juzInfo = JUZ_LIST[params.juzNumber - 1];
-  const { fontSize, hydrate } = useQuranStore();
+  const { fontSize, readingMode, hydrate } = useQuranStore();
+  const { currentSurah, currentAyahIndex, isPlaying, play: playAudio, pause: pauseAudio, resume: resumeAudio } = useAudioStore();
+
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [playingVerse, setPlayingVerse] = useState<number | null>(null);
   const [bookmarkedAyahs, setBookmarkedAyahs] = useState<Set<string>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -49,18 +51,31 @@ export function JuzDetailScreen() {
     hydrate();
     load();
     loadBookmarks();
-    return () => { stopCurrentAudio().catch(() => {}); };
   }, [load, loadBookmarks, hydrate]);
 
   const handleAudio = async (ayah: Ayah) => {
-    if (playingVerse === ayah.numberInSurah) {
-      await stopCurrentAudio(); setPlayingVerse(null); return;
+    const index = ayahs.findIndex(a => a.number === ayah.number);
+    if (index === -1) return;
+
+    const dummySurah = {
+      number: params.juzNumber * 1000,
+      name: `Juz ${params.juzNumber}`,
+      englishName: `Juz ${params.juzNumber}`,
+      englishNameTranslation: '',
+      revelationType: 'Meccan' as const,
+      numberOfAyahs: ayahs.length,
+      ayahs: ayahs,
+    };
+
+    if (currentSurah?.number === dummySurah.number && currentAyahIndex === index) {
+      if (isPlaying) {
+        pauseAudio();
+      } else {
+        resumeAudio();
+      }
+    } else {
+      await playAudio(dummySurah, index);
     }
-    if (!ayah.number) return;
-    setPlayingVerse(ayah.numberInSurah);
-    try { await playVerse(ayah.number); }
-    catch { /* audio not available offline */ }
-    finally { setPlayingVerse(null); }
   };
 
   const handleToggleBookmark = async (ayah: Ayah) => {
@@ -93,69 +108,92 @@ export function JuzDetailScreen() {
   if (isLoading) return <ScreenContainer><LoadingView /></ScreenContainer>;
   if (error) return <ScreenContainer><ErrorView message={error} onRetry={load} /></ScreenContainer>;
 
+  const renderHeader = (
+    <View style={styles.header}>
+      <TouchableOpacity style={styles.settingsBtn} onPress={() => setSettingsOpen(true)}>
+        <Ionicons name="text" size={16} color={colors.gold[400]} />
+        <Ionicons name="settings-outline" size={14} color="rgba(255,255,255,0.4)" />
+      </TouchableOpacity>
+      <Text style={styles.juzNumber}>Para {params.juzNumber} / Juz {params.juzNumber}</Text>
+      <Text style={[styles.juzArabic, { fontFamily: 'Amiri_700Bold' }]}>{juzInfo?.arabic}</Text>
+      <Text style={styles.juzEnglish}>{juzInfo?.english}</Text>
+    </View>
+  );
+
   return (
     <View style={{ flex: 1 }}>
       <ScreenContainer noPadding>
         <ReaderSettingsPanel visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
-        <FlatList
-          data={ayahs}
-          keyExtractor={(_, i) => String(i)}
-          contentContainerStyle={styles.list}
-          initialNumToRender={8}
-          maxToRenderPerBatch={8}
-          windowSize={5}
-          removeClippedSubviews
-          ListHeaderComponent={
-            <View style={styles.header}>
-              <TouchableOpacity style={styles.settingsBtn} onPress={() => setSettingsOpen(true)}>
-                <Ionicons name="text" size={16} color={colors.gold[400]} />
-                <Ionicons name="settings-outline" size={14} color="rgba(255,255,255,0.4)" />
-              </TouchableOpacity>
-              <Text style={styles.juzNumber}>Juz {params.juzNumber}</Text>
-              <Text style={[styles.juzArabic, { fontFamily: 'Amiri_700Bold' }]}>{juzInfo?.arabic}</Text>
-              <Text style={styles.juzEnglish}>{juzInfo?.english}</Text>
+        {readingMode === 'flowing' ? (
+          <ScrollView style={styles.list} contentContainerStyle={{ paddingBottom: spacing.xxxl }}>
+            {renderHeader}
+            <View style={styles.flowingPage}>
+              <Text style={[styles.flowingText, { fontSize: fontSize, lineHeight: fontSize * 2.2 }]}>
+                {ayahs.map((item, index) => {
+                  const cleanedText = (item.numberInSurah === 1 && item.surah?.number !== 1 && item.surah?.number !== 9)
+                    ? item.text.replace(/^بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ?/g, '').replace(/^بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ?/g, '').trim()
+                    : item.text;
+                  const marker = String(item.numberInSurah).replace(/[0-9]/g, d => String.fromCharCode(d.charCodeAt(0) + 1584));
+                  const surahMarker = (item.numberInSurah === 1 && index !== 0) ? `\n\n[ ${item.surah?.name} ]\n\n` : '';
+                  return `${surahMarker}${cleanedText} ﴿${marker}﴾ `;
+                }).join('')}
+              </Text>
             </View>
-          }
-          renderItem={({ item }) => {
-            const isBookmarked = item.surah
-              ? bookmarkedAyahs.has(`${item.surah.number}:${item.numberInSurah}`)
-              : false;
+          </ScrollView>
+        ) : (
+          <FlashList
+            data={ayahs}
+            keyExtractor={(_, i) => String(i)}
+            contentContainerStyle={styles.list}
+            // @ts-ignore
+            estimatedItemSize={250}
+            ListHeaderComponent={renderHeader}
+            renderItem={({ item }) => {
+              const isBookmarked = item.surah
+                ? bookmarkedAyahs.has(`${item.surah.number}:${item.numberInSurah}`)
+                : false;
+              
+              const itemIndex = ayahs.findIndex(a => a.number === item.number);
+              const isPlayingThisAyah = currentSurah?.number === params.juzNumber * 1000 &&
+                currentAyahIndex === itemIndex &&
+                isPlaying;
 
-            return (
-              <View style={styles.ayahCard}>
-                <View style={styles.ayahTop}>
-                  <View style={styles.ayahBadgeRow}>
-                    <View style={styles.ayahBadge}>
-                      <Text style={styles.ayahBadgeText}>{item.numberInSurah}</Text>
+              return (
+                <View style={styles.ayahCard}>
+                  <View style={styles.ayahTop}>
+                    <View style={styles.ayahBadgeRow}>
+                      <View style={styles.ayahBadge}>
+                        <Text style={styles.ayahBadgeText}>{item.numberInSurah}</Text>
+                      </View>
+                      {item.surah && (
+                        <Text style={styles.surahNameText}>
+                          {item.surah.englishName}
+                        </Text>
+                      )}
                     </View>
-                    {item.surah && (
-                      <Text style={styles.surahNameText}>
-                        {item.surah.englishName}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.ayahActions}>
-                    <TouchableOpacity onPress={() => handleAudio(item)} style={styles.audioBtn}>
-                      <Ionicons
-                        name={playingVerse === item.numberInSurah ? 'pause-circle' : 'play-circle'}
-                        size={22}
-                        color={colors.gold[600]}
+                    <View style={styles.ayahActions}>
+                      <TouchableOpacity onPress={() => handleAudio(item)} style={styles.audioBtn}>
+                        <Ionicons
+                          name={isPlayingThisAyah ? 'pause-circle' : 'play-circle'}
+                          size={22}
+                          color={isPlayingThisAyah ? '#D62828' : colors.gold[600]}
+                        />
+                      </TouchableOpacity>
+                      <BookmarkButton
+                        isBookmarked={isBookmarked}
+                        onToggle={() => handleToggleBookmark(item)}
                       />
-                    </TouchableOpacity>
-                    <BookmarkButton
-                      isBookmarked={isBookmarked}
-                      onToggle={() => handleToggleBookmark(item)}
-                    />
+                    </View>
                   </View>
+                  <Text style={[styles.arabicText, { fontSize, lineHeight: fontSize * 2, fontFamily: 'Amiri_400Regular' }]}>
+                    {item.text}
+                  </Text>
+                  {item.translation ? <Text style={styles.translation}>{item.translation}</Text> : null}
                 </View>
-                <Text style={[styles.arabicText, { fontSize, lineHeight: fontSize * 2, fontFamily: 'Amiri_400Regular' }]}>
-                  {item.text}
-                </Text>
-                {item.translation ? <Text style={styles.translation}>{item.translation}</Text> : null}
-              </View>
-            );
-          }}
-        />
+              );
+            }}
+          />
+        )}
       </ScreenContainer>
     </View>
   );
@@ -232,5 +270,18 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.parchment[200],
     paddingTop: spacing.md,
+  },
+  flowingPage: {
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    ...shadow.sm,
+  },
+  flowingText: {
+    color: colors.navy[950],
+    textAlign: 'justify',
+    writingDirection: 'rtl',
+    fontFamily: 'Amiri_400Regular',
   },
 });

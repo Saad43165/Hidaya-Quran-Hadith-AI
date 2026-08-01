@@ -15,7 +15,9 @@ import { useStreakStore } from '../../store/useStreakStore';
 import { RTL_LANGUAGES } from '../../i18n';
 import { getDb, ensureDatabaseReady } from '../../services/db/database';
 import { SupportedLanguage } from '../../types/models';
+import { CustomAlert } from '../../components/common/CustomAlert';
 import { colors, radius, shadow, spacing, typography } from '../../theme';
+import { darkColors } from '../../theme/darkColors';
 import type { RootStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -86,6 +88,12 @@ export function SettingsScreen() {
   const { currentStreak, longestStreak, totalDaysRead } = useStreakStore();
   const [cacheCleared, setCacheCleared] = useState(false);
 
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean; title: string; message?: string; buttons?: any[];
+  }>({ visible: false, title: '' });
+  const showAlert = (title: string, message?: string, buttons?: any[]) => setAlertConfig({ visible: true, title, message, buttons });
+  const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
+
   const handleRateApp = () => {
     const url = Platform.OS === 'ios'
       ? 'itms-apps://itunes.apple.com/app/id'
@@ -109,7 +117,7 @@ export function SettingsScreen() {
     const shouldBeRTL = RTL_LANGUAGES.includes(code);
     if (I18nManager.isRTL !== shouldBeRTL) {
       I18nManager.forceRTL(shouldBeRTL);
-      Alert.alert(
+      showAlert(
         'Language Changed',
         'Please restart the application for the layout changes (RTL/LTR) to take full effect.',
         [{ text: 'OK' }]
@@ -117,7 +125,7 @@ export function SettingsScreen() {
     }
   };
 
-  const clearCache = () => Alert.alert('Clear Cache', 'Quran and Hadith pages will re-fetch on next view. Bookmarks are kept.', [
+  const clearCache = () => showAlert('Clear Cache', 'Quran and Hadith pages will re-fetch on next view. Bookmarks are kept.', [
     { text: 'Cancel', style: 'cancel' },
     { text: 'Clear', style: 'destructive', onPress: async () => {
       await ensureDatabaseReady(); await getDb().runAsync('DELETE FROM content_cache');
@@ -125,9 +133,9 @@ export function SettingsScreen() {
     }},
   ]);
 
-  const clearBookmarks = () => Alert.alert('Delete All Bookmarks', 'This cannot be undone.', [
+  const clearBookmarks = () => showAlert('Delete All Bookmarks', 'This cannot be undone.', [
     { text: 'Cancel', style: 'cancel' },
-    { text: 'Delete All', style: 'destructive', onPress: async () => {
+    { text: 'Delete', style: 'destructive', onPress: async () => {
       await ensureDatabaseReady(); await getDb().runAsync('DELETE FROM bookmarks');
     }},
   ]);
@@ -135,7 +143,8 @@ export function SettingsScreen() {
   const avatarLetter = isGuest ? 'G' : (user?.displayName?.[0] ?? user?.email?.[0] ?? 'U').toUpperCase();
 
   return (
-    <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
+    <>
+    <ScrollView style={[styles.root, { backgroundColor: isDark ? darkColors.background : colors.parchment[50] }]} showsVerticalScrollIndicator={false}>
       <StatusBar barStyle="light-content" />
 
       {/* ── Account Hero ── */}
@@ -280,6 +289,14 @@ export function SettingsScreen() {
 
       </View>
     </ScrollView>
+    <CustomAlert
+      visible={alertConfig.visible}
+      title={alertConfig.title}
+      message={alertConfig.message}
+      buttons={alertConfig.buttons}
+      onDismiss={hideAlert}
+    />
+    </>
   );
 }
 

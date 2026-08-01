@@ -11,6 +11,7 @@ import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { ChatBubble } from '../../components/assistant/ChatBubble';
 import { sendAssistantMessage, AssistantNotConfiguredError } from '../../services/api/aiAssistantApi';
 import { ChatMessage } from '../../types/models';
+import { CustomAlert } from '../../components/common/CustomAlert';
 import { colors, radius, shadow, spacing, typography } from '../../theme';
 
 const MESSAGES_KEY = 'kitaabai.assistant.messages';
@@ -73,8 +74,14 @@ export function AssistantScreen() {
     }
   };
 
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean; title: string; message?: string; buttons?: any[];
+  }>({ visible: false, title: '' });
+  const showAlert = (title: string, message?: string, buttons?: any[]) => setAlertConfig({ visible: true, title, message, buttons });
+  const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
+
   const handleClearChat = () => {
-    Alert.alert('Clear Conversation', 'This will remove all messages permanently.', [
+    showAlert('Clear Conversation', 'This will remove all messages permanently.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Clear', style: 'destructive', onPress: () => {
         setMessages([]);
@@ -103,7 +110,7 @@ export function AssistantScreen() {
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <LinearGradient colors={['rgba(56,189,248,0.2)', 'rgba(56,189,248,0.08)']} style={styles.aiAvatar}>
-              <Text style={[styles.aiAvatarText, { fontFamily: 'Amiri_400Regular' }]}>ك</Text>
+              <Ionicons name="sparkles" size={24} color="#38BDF8" />
             </LinearGradient>
             <View>
               <Text style={styles.headerTitle}>AI Assistant</Text>
@@ -232,6 +239,13 @@ export function AssistantScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onDismiss={hideAlert}
+      />
     </ScreenContainer>
   );
 }

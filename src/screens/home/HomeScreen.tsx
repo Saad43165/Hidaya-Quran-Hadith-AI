@@ -9,11 +9,14 @@ import { QuickAccessGrid } from '../../components/home/QuickAccessGrid';
 import { ContinueReadingCard } from '../../components/home/ContinueReadingCard';
 import { getAllProgress } from '../../services/db/progressRepo';
 import { getWordCount } from '../../services/db/vocabularyRepo';
+import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchDailyAyah, fetchDailyHadith, DailyAyah, DailyHadith } from '../../services/api/dailyContentApi';
 import { getTodayHijri } from '../../services/hijri/hijriCalendar';
+import { fetchPrayerTimesByCoords, fetchPrayerTimesByCity } from '../../services/api/prayerTimesApi';
 import { useStreakStore } from '../../store/useStreakStore';
 import { useThemeStore } from '../../store/useThemeStore';
-import { ReadingProgress } from '../../types/models';
+import { ReadingProgress, PrayerTimes, PrayerName, PRAYER_NAMES } from '../../types/models';
 import { colors, gradients, radius, shadow, spacing, typography } from '../../theme';
 import { darkColors } from '../../theme/darkColors';
 
@@ -31,6 +34,35 @@ function SkeletonCard({ height = 160 }: { height?: number }) {
   return <Animated.View style={[styles.skeleton, { height, opacity }]} />;
 }
 
+function getNextPrayer(times: PrayerTimes): PrayerName {
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  for (const prayer of PRAYER_NAMES) {
+    const match = times[prayer].match(/^(\d{1,2}):(\d{2})/);
+    if (!match) continue;
+    if (parseInt(match[1], 10) * 60 + parseInt(match[2], 10) > nowMinutes) return prayer;
+  }
+  return 'Fajr';
+}
+
+function getCurrentPrayer(times: PrayerTimes): PrayerName | null {
+  const next = getNextPrayer(times);
+  const nextIdx = PRAYER_NAMES.indexOf(next);
+  if (nextIdx === 0) return null;
+  return PRAYER_NAMES[nextIdx - 1];
+}
+
+function formatTime12(time24: string): string {
+  const match = time24.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return time24;
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  return `${hours}:${minutes} ${ampm}`;
+}
+
 export function HomeScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<TabAndStackNavigation>();
@@ -40,6 +72,7 @@ export function HomeScreen() {
   const [progress, setProgress] = useState<ReadingProgress[]>([]);
   const [dailyAyah, setDailyAyah] = useState<DailyAyah | null>(null);
   const [dailyHadith, setDailyHadith] = useState<DailyHadith | null>(null);
+  const [prayerTimes, setPrayerTimes] = useState<PrayerTimes | null>(null);
   const [loadingContent, setLoadingContent] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [vocabCount, setVocabCount] = useState(0);
@@ -70,6 +103,22 @@ export function HomeScreen() {
 
   const loadContent = useCallback(async () => {
     setLoadingContent(true);
+    try {
+      const storedMethod = await AsyncStorage.getItem('kitaabai.prayer.method').catch(() => null);
+      const method = storedMethod ? parseInt(storedMethod, 10) : 2;
+      const { status } = await Location.requestForegroundPermissionsAsync().catch(() => ({ status: 'denied' }));
+      let times;
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        times = await fetchPrayerTimesByCoords(loc.coords.latitude, loc.coords.longitude, method);
+      } else {
+        times = await fetchPrayerTimesByCity('Karachi', 'Pakistan', method);
+      }
+      setPrayerTimes(times);
+    } catch (e) {
+      console.log('Error loading prayer times', e);
+    }
+
     await Promise.all([
       fetchDailyAyah().then(setDailyAyah).catch(() => {}),
       fetchDailyHadith().then(setDailyHadith).catch(() => {}),
@@ -164,6 +213,20 @@ export function HomeScreen() {
               </View>
             </View>
           )}
+
+          {prayerTimes && (
+            <View style={styles.prayerHeroRow}>
+              {PRAYER_NAMES.map(name => {
+                const isActive = getCurrentPrayer(prayerTimes) === name;
+                return (
+                  <View key={name} style={[styles.prayerHeroItem, isActive && styles.prayerHeroItemActive]}>
+                    <Text style={[styles.prayerHeroName, isActive && styles.prayerHeroNameActive]}>{name}</Text>
+                    <Text style={[styles.prayerHeroTime, isActive && styles.prayerHeroTimeActive]}>{formatTime12(prayerTimes[name])}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </Animated.View>
       </LinearGradient>
 
@@ -208,15 +271,12 @@ export function HomeScreen() {
         {/* ── Quick Access ── */}
         <SectionHeader icon="grid-outline" iconColor={colors.gold[400]} label={t('home.quickAccess').toUpperCase()} />
         <QuickAccessGrid items={[
-          { key: 'quran',      label: t('nav.quran'),     icon: 'book-outline',                onPress: () => navigation.navigate('Quran')        },
-          { key: 'hadith',     label: t('nav.hadith'),    icon: 'chatbox-outline',             onPress: () => navigation.navigate('Hadith')       },
-          { key: 'prayer',     label: t('nav.prayer'),    icon: 'time-outline',                onPress: () => navigation.navigate('Prayer')       },
-          { key: 'tasbih',     label: 'Tasbih',            icon: 'radio-button-on-outline',     onPress: () => navigation.navigate('Tasbih')       },
           { key: 'duas',       label: 'Duas',               icon: 'hand-left-outline',           onPress: () => navigation.navigate('Duas')         },
+          { key: 'tasbih',     label: 'Tasbih',            icon: 'radio-button-on-outline',     onPress: () => navigation.navigate('Tasbih')       },
           { key: 'names',      label: '99 Names',           icon: 'star-outline',                onPress: () => navigation.navigate('NamesOfAllah') },
-          { key: 'library',    label: t('nav.library'),   icon: 'library-outline',             onPress: () => navigation.navigate('Library')      },
           { key: 'vocabulary', label: 'Vocabulary',        icon: 'language-outline',            onPress: () => navigation.navigate('Vocabulary')   },
-          { key: 'assistant',  label: t('nav.assistant'), icon: 'chatbubble-ellipses-outline', onPress: () => navigation.navigate('Assistant')    },
+          { key: 'bookmarks',  label: 'Bookmarks',         icon: 'bookmark-outline',            onPress: () => navigation.navigate('Bookmarks')    },
+          { key: 'search',     label: 'Search',            icon: 'search-outline',              onPress: () => navigation.navigate('Search')       },
         ]} />
 
         {/* ── Continue Reading ── */}
@@ -348,6 +408,46 @@ const styles = StyleSheet.create({
   streakBest: { fontSize: 11, color: colors.gold[400], fontWeight: '600' },
   streakPillMuted: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 5, alignSelf: 'flex-start' },
   streakTextMuted: { fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '500' },
+  prayerHeroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  prayerHeroItem: {
+    alignItems: 'center',
+    flex: 1,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+  },
+  prayerHeroItemActive: {
+    backgroundColor: 'rgba(212, 169, 62, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 169, 62, 0.3)',
+  },
+  prayerHeroName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.5)',
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  prayerHeroNameActive: {
+    color: colors.gold[300],
+  },
+  prayerHeroTime: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.88)',
+  },
+  prayerHeroTimeActive: {
+    color: colors.gold[100],
+    fontWeight: '700',
+  },
 
   body: { padding: spacing.lg, gap: spacing.md },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm, marginBottom: -spacing.xs },
