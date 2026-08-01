@@ -44,7 +44,6 @@
       "expo-font",
       "expo-sqlite",
       "expo-sensors",
-      "expo-haptics",
       [
         "expo-location",
         {
