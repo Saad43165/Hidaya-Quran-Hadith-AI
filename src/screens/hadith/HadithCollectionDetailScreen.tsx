@@ -34,9 +34,18 @@ export function HadithCollectionDetailScreen() {
       const data = await fetchHadithCollectionDetail(params.collectionId);
       setCollection(data);
       setHadithProgress(params.collectionId, data.name).catch(() => {});
+      if (params.initialHadithNumber) {
+        const matchingChapter = data.chapters.find(ch =>
+          ch.hadiths.some(h => h.hadithNumber === params.initialHadithNumber)
+        );
+        if (matchingChapter) {
+          setSelectedChapter(matchingChapter);
+          setViewMode('chapter');
+        }
+      }
     } catch { setError('Could not load collection. Check your connection.'); }
     finally { setIsLoading(false); }
-  }, [params.collectionId]);
+  }, [params.collectionId, params.initialHadithNumber]);
 
   const loadBookmarks = useCallback(async () => {
     const all = await listBookmarks();

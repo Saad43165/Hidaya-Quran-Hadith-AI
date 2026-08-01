@@ -4,7 +4,7 @@ import { initializeAuth, getAuth, Auth } from 'firebase/auth';
 // `react-native` condition, but the underlying `@firebase/auth` package
 // does — so this specific function is imported from there directly.
 import { getReactNativePersistence } from '@firebase/auth';
-import { createAsyncStorage } from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -32,10 +32,9 @@ export function getFirebaseAuth(): Auth | null {
   }
 
   if (!auth) {
-    const appStorage = createAsyncStorage('kitaabai-auth');
     try {
       auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(appStorage),
+        persistence: getReactNativePersistence(AsyncStorage),
       });
     } catch {
       // initializeAuth throws if called twice (e.g. after Fast Refresh) —

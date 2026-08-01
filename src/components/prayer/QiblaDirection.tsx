@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../theme';
 
 const MECCA_LAT = 21.4225;
@@ -62,8 +63,8 @@ export function QiblaDirection({ latitude, longitude }: Props) {
   }, [deviceHeading, qiblaBearing, rotateAnim]);
 
   const rotate = rotateAnim.interpolate({
-    inputRange: [-720, 720],
-    outputRange: ['-720deg', '720deg'],
+    inputRange: [-360, 360],
+    outputRange: ['360deg', '-360deg'],
   });
 
   const DIRS = [
@@ -71,27 +72,42 @@ export function QiblaDirection({ latitude, longitude }: Props) {
     { d: 'S', deg: 180 }, { d: 'W', deg: 270 },
   ];
 
+  const dialRotation = sensorAvailable && deviceHeading !== null ? rotate : '0deg';
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{t('prayer.qibla')}</Text>
 
-      <View style={styles.compassOuter}>
-        {DIRS.map(({ d, deg }) => (
-          <Text key={d} style={[styles.cardinal, {
-            transform: [
-              { rotate: `${deg}deg` },
-              { translateY: -62 },
-              { rotate: `-${deg}deg` },
-            ],
-          }]}>{d}</Text>
-        ))}
+      {/* Fixed top indicator */}
+      <Ionicons name="caret-down" size={24} color={colors.gold[500]} style={{ marginBottom: -15, zIndex: 10 }} />
 
-        <Animated.View style={[styles.needleWrap, { transform: [{ rotate: sensorAvailable && deviceHeading !== null ? rotate : `${roundedBearing}deg` }] }]}>
-          <View style={styles.needleTip} />
-          <View style={styles.needleTail} />
+      <View style={styles.compassOuter}>
+        {/* Rotating Dial */}
+        <Animated.View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', transform: [{ rotate: dialRotation }] }]}>
+          {DIRS.map(({ d, deg }) => (
+            <Text key={d} style={[styles.cardinal, {
+              transform: [
+                { rotate: `${deg}deg` },
+                { translateY: -64 },
+                { rotate: `-${deg}deg` },
+              ],
+            }]}>{d}</Text>
+          ))}
+          {/* Kaaba marker placed on the dial at qiblaBearing */}
+          <View style={[styles.kaabaMarker, { transform: [{ rotate: `${roundedBearing}deg` }, { translateY: -64 }] }]}>
+            <Text style={styles.kaabaEmoji}>🕋</Text>
+          </View>
+
+          {/* Compass ring details */}
+          {Array.from({ length: 24 }).map((_, i) => (
+            <View key={i} style={[styles.tickMarker, { transform: [{ rotate: `${i * 15}deg` }, { translateY: -76 }] }]} />
+          ))}
         </Animated.View>
-        <View style={styles.center} />
-        <Text style={styles.kaabaEmoji}>🕋</Text>
+
+        {/* Center fixed needle (optional, or just center dot) */}
+        <View style={styles.centerOuter}>
+          <View style={styles.centerInner} />
+        </View>
       </View>
 
       <Text style={styles.bearing}>{roundedBearing}°</Text>
@@ -106,31 +122,46 @@ export function QiblaDirection({ latitude, longitude }: Props) {
   );
 }
 
-const SIZE = 160;
+const SIZE = 180;
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', paddingVertical: spacing.xl, gap: spacing.md },
   label: { ...typography.label, color: colors.gold[400] },
   compassOuter: {
     width: SIZE, height: SIZE, borderRadius: SIZE / 2,
-    borderWidth: 2, borderColor: colors.gold[600],
-    backgroundColor: 'rgba(11,19,48,0.8)',
+    borderWidth: 3, borderColor: 'rgba(212,169,62,0.5)',
+    backgroundColor: 'rgba(11,19,48,0.9)',
     alignItems: 'center', justifyContent: 'center',
     position: 'relative',
+    shadowColor: colors.gold[500],
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
   },
   cardinal: {
-    position: 'absolute', color: colors.parchment[400],
-    fontSize: 11, fontWeight: '700',
+    position: 'absolute', color: colors.parchment[300],
+    fontSize: 14, fontWeight: '800',
   },
-  needleWrap: {
-    position: 'absolute', alignItems: 'center',
-    height: SIZE * 0.7, justifyContent: 'center',
+  tickMarker: {
+    position: 'absolute', width: 2, height: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 1,
   },
-  needleTip: { width: 4, height: SIZE * 0.3, backgroundColor: colors.gold[500], borderRadius: 2 },
-  needleTail: { width: 4, height: SIZE * 0.17, backgroundColor: colors.parchment[600], borderRadius: 2 },
-  center: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold[400] },
-  kaabaEmoji: { position: 'absolute', top: -14, fontSize: 16 },
-  bearing: { ...typography.displayMd, color: colors.white },
+  kaabaMarker: {
+    position: 'absolute',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  kaabaEmoji: { fontSize: 22, marginTop: -6 },
+  centerOuter: {
+    position: 'absolute', width: 16, height: 16, borderRadius: 8,
+    backgroundColor: 'rgba(212,169,62,0.3)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  centerInner: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: colors.gold[400],
+  },
+  bearing: { ...typography.displayMd, color: colors.white, marginTop: spacing.sm },
   caption: { ...typography.caption, color: colors.parchment[400] },
   hint: { ...typography.caption, color: colors.semantic.warning, textAlign: 'center', maxWidth: 220 },
 });

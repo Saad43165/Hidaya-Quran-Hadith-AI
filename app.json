@@ -34,7 +34,8 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
-        "android.permission.USE_BIOMETRIC"
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -59,12 +60,12 @@
           "sounds": []
         }
       ],
-      [
-        "expo-av",
-        {
-          "microphonePermission": false
-        }
-      ]
-    ]
+      "expo-audio"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1b004f5f-07ab-4a0f-b21f-14dc011ad110"
+      }
+    }
   }
 }

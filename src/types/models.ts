@@ -120,4 +120,38 @@ export interface Ayah {
   text: string;
   translation?: string;
   audioUrl?: string;
+  surah?: {
+    number: number;
+    name: string;
+    englishName: string;
+  };
 }
+
+export interface WordToken {
+  arabic: string;
+  transliteration: string;
+  translation: string;
+}
+
+export interface VocabularyWord {
+  id: string;
+  arabic: string;
+  transliteration: string;
+  meaning: string;
+  root: string;
+  grammarRole: string;
+  surahNumber: number;
+  ayahNumber: number;
+  timesInQuran: number;
+  savedAt: number;
+}
+
+export type PrayerCalculationMethod = 1 | 2 | 3 | 4 | 5;
+
+export const PRAYER_METHODS: { value: PrayerCalculationMethod; label: string }[] = [
+  { value: 1, label: 'University of Islamic Sciences, Karachi' },
+  { value: 2, label: 'Islamic Society of North America (ISNA)' },
+  { value: 3, label: 'Muslim World League (MWL)' },
+  { value: 4, label: 'Umm Al-Qura University, Makkah' },
+  { value: 5, label: 'Egyptian General Authority of Survey' },
+];

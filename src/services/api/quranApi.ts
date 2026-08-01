@@ -97,6 +97,11 @@ export async function fetchJuzDetail(
       number: a.number,
       text: a.text,
       translation: transAyahs[idx]?.text,
+      surah: a.surah ? {
+        number: a.surah.number,
+        name: a.surah.name,
+        englishName: a.surah.englishName,
+      } : undefined,
     }));
 
     return { ayahs, name: `Juz ${juzNumber}` };

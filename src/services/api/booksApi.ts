@@ -1,20 +1,16 @@
-import axios from 'axios';
 import { Book } from '../../types/models';
-
-const gutenbergClient = axios.create({
-  baseURL: 'https://gutendex.com', // public Gutenberg mirror API, no key needed
-  timeout: 10000,
-});
-
-const googleBooksClient = axios.create({
-  baseURL: 'https://www.googleapis.com/books/v1',
-  timeout: 10000,
-});
 
 /** Search free, public-domain Islamic/general texts on Project Gutenberg. */
 export async function searchGutenberg(query: string): Promise<Book[]> {
-  const { data } = await gutenbergClient.get('/books', { params: { search: query } });
-  return data.results.map((r: any) => ({
+  const url = `https://gutendex.com/books?search=${encodeURIComponent(query)}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`Gutenberg API failed: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return (data.results || []).map((r: any) => ({
     id: `gutenberg-${r.id}`,
     title: r.title,
     author: r.authors?.[0]?.name ?? 'Unknown',
@@ -31,10 +27,17 @@ export async function searchGutenberg(query: string): Promise<Book[]> {
  */
 export async function searchGoogleBooks(query: string): Promise<Book[]> {
   const apiKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
-  const { data } = await googleBooksClient.get('/volumes', {
-    params: { q: query, ...(apiKey ? { key: apiKey } : {}) },
-  });
-  return (data.items ?? []).map((item: any) => ({
+  let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}`;
+  if (apiKey) url += `&key=${apiKey}`;
+
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`Google Books API failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return (data.items || []).map((item: any) => ({
     id: `google-${item.id}`,
     title: item.volumeInfo?.title ?? 'Untitled',
     author: item.volumeInfo?.authors?.[0] ?? 'Unknown',

@@ -25,6 +25,12 @@ export function ensureDatabaseReady(): Promise<void> {
       CREATE TABLE IF NOT EXISTS content_cache (
         cache_key TEXT PRIMARY KEY NOT NULL, json_blob TEXT NOT NULL, cached_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS vocabulary (
+        id TEXT PRIMARY KEY NOT NULL, arabic TEXT NOT NULL,
+        transliteration TEXT, meaning TEXT, root TEXT, grammar_role TEXT,
+        surah_number INTEGER, ayah_number INTEGER, times_in_quran INTEGER,
+        saved_at INTEGER NOT NULL
+      );
     `).catch(e => {
       console.warn('[KitaabAI] DB setup error:', e);
       // Reset so next call retries

@@ -23,14 +23,15 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Auth: undefined;
   MainTabs: undefined;
-  SurahDetail: { surahNumber: number; englishName: string };
+  SurahDetail: { surahNumber: number; englishName: string; initialAyahNumber?: number };
   JuzDetail: { juzNumber: number };
-  HadithCollectionDetail: { collectionId: string; name: string };
+  HadithCollectionDetail: { collectionId: string; name: string; initialHadithNumber?: number };
   Bookmarks: undefined;
   Search: undefined;
   Tasbih: undefined;
   Duas: undefined;
   NamesOfAllah: undefined;
+  Vocabulary: undefined;
 };
 
 export type TabAndStackNavigation = CompositeNavigationProp<

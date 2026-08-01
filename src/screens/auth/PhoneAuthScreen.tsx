@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
+// import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha'; // UNINSTALLED
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { AuthTextInput } from '../../components/auth/AuthTextInput';
@@ -52,13 +52,13 @@ export function PhoneAuthScreen() {
 
   return (
     <View style={styles.root}>
-      {app && (
+      {/* app && (
         <FirebaseRecaptchaVerifierModal
           ref={recaptchaVerifier}
           firebaseConfig={app.options}
           attemptInvisibleVerification={true}
         />
-      )}
+      ) */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
           <Text style={styles.formTitle}>Phone Authentication</Text>

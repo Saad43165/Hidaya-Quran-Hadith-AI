@@ -10,19 +10,23 @@ export const TRANSLATION_LABELS: Record<TranslationLanguage, string> = {
 };
 
 interface QuranState {
-  fontSize: number;          // 16–32
+  fontSize: number;
   translationLang: TranslationLanguage;
+  wordByWordEnabled: boolean;
   setFontSize: (size: number) => Promise<void>;
   setTranslationLang: (lang: TranslationLanguage) => Promise<void>;
+  setWordByWordEnabled: (enabled: boolean) => Promise<void>;
   hydrate: () => Promise<void>;
 }
 
 const FONT_SIZE_KEY    = 'kitaabai.quran.fontSize';
 const TRANS_LANG_KEY   = 'kitaabai.quran.translationLang';
+const WORD_BY_WORD_KEY = 'kitaabai.quran.wordByWord';
 
 export const useQuranStore = create<QuranState>((set) => ({
   fontSize: 24,
   translationLang: 'en.sahih',
+  wordByWordEnabled: false,
 
   setFontSize: async (size) => {
     await AsyncStorage.setItem(FONT_SIZE_KEY, String(size));
@@ -34,14 +38,21 @@ export const useQuranStore = create<QuranState>((set) => ({
     set({ translationLang: lang });
   },
 
+  setWordByWordEnabled: async (enabled) => {
+    await AsyncStorage.setItem(WORD_BY_WORD_KEY, enabled ? '1' : '0');
+    set({ wordByWordEnabled: enabled });
+  },
+
   hydrate: async () => {
-    const [sizeStr, lang] = await Promise.all([
+    const [sizeStr, lang, wbw] = await Promise.all([
       AsyncStorage.getItem(FONT_SIZE_KEY),
       AsyncStorage.getItem(TRANS_LANG_KEY),
+      AsyncStorage.getItem(WORD_BY_WORD_KEY),
     ]);
     set({
       fontSize: sizeStr ? parseInt(sizeStr, 10) : 24,
       translationLang: (lang as TranslationLanguage) ?? 'en.sahih',
+      wordByWordEnabled: wbw === '1',
     });
   },
 }));

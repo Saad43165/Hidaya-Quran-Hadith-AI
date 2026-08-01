@@ -6,7 +6,10 @@ import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { NAMES_OF_ALLAH } from '../../data/namesOfAllah';
 import { colors, gradients, radius, shadow, spacing, typography } from '../../theme';
 
+import { useNavigation } from '@react-navigation/native';
+
 export function NamesOfAllahScreen() {
+  const navigation = useNavigation();
   const [query, setQuery] = useState('');
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
@@ -31,9 +34,14 @@ export function NamesOfAllahScreen() {
           <View>
             <LinearGradient colors={gradients.heroNavy} style={styles.header}>
               <View style={styles.headerDecor} />
-              <Text style={[styles.headerArabic, { fontFamily: 'Amiri_700Bold' }]}>
-                أسماء الله الحسنى
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: spacing.sm }}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4, position: 'absolute', left: 0, zIndex: 10 }}>
+                  <Ionicons name="arrow-back" size={24} color={colors.white} />
+                </TouchableOpacity>
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={[styles.headerArabic, { fontFamily: 'Amiri_700Bold' }]}>أسماء الله الحسنى</Text>
+                </View>
+              </View>
               <Text style={styles.headerSub}>The 99 Beautiful Names of Allah</Text>
               <View style={styles.searchBar}>
                 <Ionicons name="search" size={16} color="rgba(255,255,255,0.5)" />

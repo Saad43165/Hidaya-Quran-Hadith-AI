@@ -1,0 +1,22 @@
+diff --git a/node_modules/expo-notifications/build/index.js b/node_modules/expo-notifications/build/index.js
+index 3167134..48cbdd9 100644
+--- a/node_modules/expo-notifications/build/index.js
++++ b/node_modules/expo-notifications/build/index.js
+@@ -1,4 +1,5 @@
+-import { isRunningInExpoGo } from 'expo';
++import { isRunningInExpoGo as _isRunningInExpoGo } from 'expo';
++const isRunningInExpoGo = () => typeof _isRunningInExpoGo === 'function' ? _isRunningInExpoGo() : false;
+ function areWeTestingWithJest() {
+     return process.env.JEST_WORKER_ID !== undefined || process.env.NODE_ENV?.toLowerCase() === 'test';
+ }
+diff --git a/node_modules/expo-notifications/build/warnOfExpoGoPushUsage.js b/node_modules/expo-notifications/build/warnOfExpoGoPushUsage.js
+index 8260405..a2d4f52 100644
+--- a/node_modules/expo-notifications/build/warnOfExpoGoPushUsage.js
++++ b/node_modules/expo-notifications/build/warnOfExpoGoPushUsage.js
+@@ -1,4 +1,5 @@
+-import { isRunningInExpoGo } from 'expo';
++import { isRunningInExpoGo as _isRunningInExpoGo } from 'expo';
++const isRunningInExpoGo = () => typeof _isRunningInExpoGo === 'function' ? _isRunningInExpoGo() : false;
+ import { Platform } from 'expo-modules-core';
+ let didWarn = false;
+ export const warnOfExpoGoPushUsage = () => {

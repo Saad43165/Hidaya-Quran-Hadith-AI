@@ -6,7 +6,10 @@ import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { DUAS, DUA_CATEGORIES, Dua } from '../../data/duas';
 import { colors, gradients, radius, shadow, spacing, typography } from '../../theme';
 
+import { useNavigation } from '@react-navigation/native';
+
 export function DuaScreen() {
+  const navigation = useNavigation();
   const [selectedCategory, setSelectedCategory] = useState<string>(DUA_CATEGORIES[0]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -16,7 +19,14 @@ export function DuaScreen() {
     <ScreenContainer noPadding>
       <LinearGradient colors={gradients.heroNavy} style={styles.header}>
         <View style={styles.headerDecor} />
-        <Text style={styles.headerArabic}>أَدْعِيَة</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4, position: 'absolute', left: 0, zIndex: 10 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.white} />
+          </TouchableOpacity>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={styles.headerArabic}>أَدْعِيَة</Text>
+          </View>
+        </View>
         <Text style={styles.headerSub}>Daily Duas & Supplications</Text>
       </LinearGradient>
 

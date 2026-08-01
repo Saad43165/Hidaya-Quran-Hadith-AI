@@ -11,6 +11,7 @@ import { SearchScreen } from '../screens/search/SearchScreen';
 import { TasbihScreen } from '../screens/tasbih/TasbihScreen';
 import { DuaScreen } from '../screens/dua/DuaScreen';
 import { NamesOfAllahScreen } from '../screens/names/NamesOfAllahScreen';
+import { VocabularyScreen } from '../screens/vocabulary/VocabularyScreen';
 import { MainTabs } from './MainTabs';
 import { AuthNavigator } from './AuthNavigator';
 import { useAppStore } from '../store/useAppStore';
@@ -19,7 +20,7 @@ import { useThemeStore } from '../store/useThemeStore';
 import { useStreakStore } from '../store/useStreakStore';
 import { useQuranStore } from '../store/useQuranStore';
 import { LoadingView } from '../components/common/AsyncStateView';
-import { RTL_LANGUAGES } from '../i18n';
+import i18n, { RTL_LANGUAGES } from '../i18n';
 import { colors } from '../theme';
 import { darkColors } from '../theme/darkColors';
 import type { RootStackParamList } from './types';
@@ -51,6 +52,7 @@ export function RootNavigator() {
   useEffect(() => {
     const shouldBeRTL = RTL_LANGUAGES.includes(language);
     if (I18nManager.isRTL !== shouldBeRTL) I18nManager.forceRTL(shouldBeRTL);
+    i18n.changeLanguage(language);
   }, [language]);
 
   if (!isHydrated || isAuthInit) return <LoadingView />;
@@ -104,6 +106,8 @@ export function RootNavigator() {
             <Stack.Screen name="Duas" component={DuaScreen}
               options={{ headerShown: false }} />
             <Stack.Screen name="NamesOfAllah" component={NamesOfAllahScreen}
+              options={{ headerShown: false }} />
+            <Stack.Screen name="Vocabulary" component={VocabularyScreen}
               options={{ headerShown: false }} />
           </>
         )}

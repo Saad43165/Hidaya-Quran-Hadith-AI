@@ -3,6 +3,23 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ChatMessage } from '../../types/models';
 import { colors, radius, spacing, typography } from '../../theme';
 
+function renderMarkdownText(text: string, baseStyle: any) {
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+  return (
+    <Text style={baseStyle}>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <Text key={i} style={{ fontWeight: 'bold' }}>{part.slice(2, -2)}</Text>;
+        }
+        if (part.startsWith('*') && part.endsWith('*')) {
+          return <Text key={i} style={{ fontStyle: 'italic' }}>{part.slice(1, -1)}</Text>;
+        }
+        return <Text key={i}>{part}</Text>;
+      })}
+    </Text>
+  );
+}
+
 export function ChatBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user';
   return (
@@ -13,7 +30,7 @@ export function ChatBubble({ message }: { message: ChatMessage }) {
         </View>
       )}
       <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
-        <Text style={isUser ? styles.userText : styles.assistantText}>{message.content}</Text>
+        {renderMarkdownText(message.content, isUser ? styles.userText : styles.assistantText)}
       </View>
     </View>
   );

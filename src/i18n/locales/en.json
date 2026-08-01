@@ -4,6 +4,7 @@
     "title1": "Read the Quran, beautifully", "subtitle1": "Arabic text with translation and audio, always within reach.",
     "title2": "Hadith by chapter", "subtitle2": "Browse all 10 major collections organised by topic.",
     "title3": "Ask, and understand", "subtitle3": "An AI companion for questions about what you read.",
+    "title4": "Your AI reading companion", "subtitle4": "Ask anything about what you're reading — the AI knows your page.",
     "getStarted": "Get Started", "skip": "Skip"
   },
   "nav": { "home": "Home", "quran": "Quran", "hadith": "Hadith", "prayer": "Prayer", "library": "Library", "assistant": "Assistant", "settings": "Settings" },
