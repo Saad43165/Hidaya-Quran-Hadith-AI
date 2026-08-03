@@ -13,6 +13,11 @@ export async function playVerse(globalVerseNumber: number): Promise<void> {
 export async function stopCurrentAudio(): Promise<void> {
   if (currentPlayer) {
     currentPlayer.pause();
+    try {
+      currentPlayer.remove();
+    } catch (err) {
+      console.warn('Error removing player:', err);
+    }
     currentPlayer = null;
   }
 }

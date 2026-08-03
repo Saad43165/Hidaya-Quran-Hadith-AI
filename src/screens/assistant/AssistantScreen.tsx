@@ -1,299 +1,667 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Animated, Easing, FlatList, KeyboardAvoidingView,
-  Platform, Share, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, Alert, Animated, FlatList, KeyboardAvoidingView,
+  Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { ChatBubble } from '../../components/assistant/ChatBubble';
-import { sendAssistantMessage, AssistantNotConfiguredError } from '../../services/api/aiAssistantApi';
 import { ChatMessage } from '../../types/models';
-import { CustomAlert } from '../../components/common/CustomAlert';
-import { colors, radius, shadow, spacing, typography } from '../../theme';
+import {
+  sendAssistantMessageStreaming,
+  AssistantNotConfiguredError,
+} from '../../services/api/aiAssistantApi';
+import {
+  useAIStore,
+  CONVERSATION_MODES,
+  Madhab,
+  KnowledgeLevel,
+  ConversationMode,
+  AILanguage,
+} from '../../store/useAIStore';
+import { RichMessage } from '../../components/assistant/RichMessage';
+import { useSmartSuggestions } from '../../hooks/useSmartSuggestions';
+import { useThemeColors } from '../../hooks/useThemeColors';
+import { colors, radius, spacing, typography } from '../../theme';
 
 const MESSAGES_KEY = 'kitaabai.assistant.messages';
-const MAX_STORED   = 50;
+const MAX_STORED   = 60;
 
-const SUGGESTIONS: { text: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
-  { text: 'What is the meaning of Surah Al-Fatiha?',    icon: 'book-outline',    color: '#F59E0B' },
-  { text: 'Explain the importance of Salah in Islam',    icon: 'time-outline',    color: '#4ADE80' },
-  { text: 'What does Sabr (patience) mean in Islam?',    icon: 'heart-outline',   color: '#F472B6' },
-  { text: 'What are the five pillars of Islam?',          icon: 'layers-outline',  color: '#38BDF8' },
-  { text: 'How to perform Wudu step by step?',            icon: 'water-outline',   color: '#818CF8' },
+// ── Onboarding card ────────────────────────────────────────────────────────────
+
+interface OnboardingCardProps {
+  onDone: (madhab: Madhab, level: KnowledgeLevel) => void;
+  isDark: boolean;
+  surface: string;
+  border: string;
+  textPrimary: string;
+  textSecondary: string;
+}
+
+const MADHABS: { key: Madhab; label: string }[] = [
+  { key: 'hanafi',  label: 'Hanafi'   },
+  { key: 'shafii',  label: "Shafi'i"  },
+  { key: 'maliki',  label: 'Maliki'   },
+  { key: 'hanbali', label: 'Hanbali'  },
+  { key: 'none',    label: 'No preference' },
 ];
 
-export function AssistantScreen() {
-  const { t } = useTranslation();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const listRef = useRef<FlatList>(null);
-  const inputScaleAnim = useRef(new Animated.Value(1)).current;
+const LEVELS: { key: KnowledgeLevel; label: string; desc: string }[] = [
+  { key: 'beginner',     label: 'Beginner',     desc: 'New to Islam / learning basics' },
+  { key: 'intermediate', label: 'Intermediate', desc: 'Know the pillars, studying more' },
+  { key: 'advanced',     label: 'Advanced',     desc: 'Scholarly reading, Arabic knowledge' },
+];
 
-  // Persist messages
+function OnboardingCard({ onDone, isDark, surface, border, textPrimary, textSecondary }: OnboardingCardProps) {
+  const [madhab, setMadhab] = useState<Madhab>('none');
+  const [level,  setLevel]  = useState<KnowledgeLevel>('intermediate');
+
+  return (
+    <View style={[styles.onboardCard, { backgroundColor: surface, borderColor: border }]}>
+      <LinearGradient colors={['#1A2E7A', '#060C1F']} style={styles.onboardGrad}>
+        <Text style={[styles.onboardIcon]}>🧠</Text>
+        <Text style={styles.onboardTitle}>Personalise IlmAI</Text>
+        <Text style={styles.onboardSub}>Help the AI give you better answers</Text>
+      </LinearGradient>
+
+      <View style={styles.onboardBody}>
+        {/* Madhab */}
+        <Text style={[styles.onboardLabel, { color: textSecondary }]}>Your Madhab (school of jurisprudence)</Text>
+        <View style={styles.onboardChips}>
+          {MADHABS.map(m => (
+            <TouchableOpacity
+              key={m.key}
+              style={[styles.onboardChip, { borderColor: border },
+                madhab === m.key && styles.onboardChipActive]}
+              onPress={() => setMadhab(m.key)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.onboardChipText, { color: textPrimary },
+                madhab === m.key && styles.onboardChipTextActive]}>
+                {m.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Knowledge level */}
+        <Text style={[styles.onboardLabel, { color: textSecondary, marginTop: spacing.sm }]}>Your Knowledge Level</Text>
+        <View style={styles.onboardLevels}>
+          {LEVELS.map(l => (
+            <TouchableOpacity
+              key={l.key}
+              style={[styles.onboardLevel, { borderColor: border },
+                level === l.key && styles.onboardLevelActive]}
+              onPress={() => setLevel(l.key)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.onboardLevelTitle, { color: textPrimary },
+                level === l.key && styles.onboardChipTextActive]}>
+                {l.label}
+              </Text>
+              <Text style={[styles.onboardLevelDesc, { color: textSecondary }]}>{l.desc}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          style={styles.onboardBtn}
+          onPress={() => onDone(madhab, level)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.onboardBtnText}>Start Chatting →</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ── Bubble ─────────────────────────────────────────────────────────────────────
+
+interface BubbleProps {
+  msg: ChatMessage;
+  isStreaming: boolean;
+  isDark: boolean;
+  surface: string;
+  border: string;
+  textPrimary: string;
+  textSecondary: string;
+  onLongPress: () => void;
+}
+
+function Bubble({ msg, isStreaming, isDark, surface, border, textPrimary, textSecondary, onLongPress }: BubbleProps) {
+  const isUser = msg.role === 'user';
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onLongPress={onLongPress}
+      delayLongPress={500}
+      disabled={isUser || msg.isError}
+    >
+      <View style={[
+        styles.bubbleRow,
+        isUser ? styles.bubbleRowUser : styles.bubbleRowAi,
+      ]}>
+        {!isUser && (
+          <LinearGradient colors={['#1A2E7A', '#0D1A45']} style={styles.aiAvatar}>
+            <Text style={{ fontSize: 14 }}>🕌</Text>
+          </LinearGradient>
+        )}
+
+        <View style={[
+          styles.bubble,
+          isUser
+            ? styles.bubbleUser
+            : [styles.bubbleAi, { backgroundColor: surface, borderColor: border }],
+          msg.isError && styles.bubbleError,
+        ]}>
+          {isUser ? (
+            <Text style={styles.bubbleUserText}>{msg.content}</Text>
+          ) : msg.isError ? (
+            <Text style={[styles.bubbleErrorText, { color: textSecondary }]}>{msg.content}</Text>
+          ) : (
+            <RichMessage
+              content={msg.content}
+              isStreaming={isStreaming}
+              isDark={isDark}
+              textColor={textPrimary}
+              mutedColor={textSecondary}
+            />
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ── Main Screen ────────────────────────────────────────────────────────────────
+
+const LANG_LABELS: Record<AILanguage, string> = { en: 'EN', ur: 'اُردو', ar: 'عربی' };
+const AI_LANGS: AILanguage[] = ['en', 'ur', 'ar'];
+
+export function AssistantScreen() {
+  const { isDark, bg, surface, border, textPrimary, textSecondary, textMuted } = useThemeColors();
+
+  // Store
+  const {
+    madhab, level, language, mode, savedAnswers, onboarded,
+    setLanguage, setMode, saveAnswer, completeOnboarding, hydrate,
+  } = useAIStore();
+
+  // Local UI state
+  const [messages, setMessages]         = useState<ChatMessage[]>([]);
+  const [input, setInput]               = useState('');
+  const [isSending, setIsSending]       = useState(false);
+  const [streamingId, setStreamingId]   = useState<string | null>(null);
+  const [streamBuffer, setStreamBuffer] = useState('');
+  const [langOpen, setLangOpen]         = useState(false);
+  const listRef = useRef<FlatList>(null);
+
+  // Smart suggestions for empty state
+  const suggestions = useSmartSuggestions(mode);
+
+  // Hydrate store once
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  // Load persisted messages
   useEffect(() => {
     AsyncStorage.getItem(MESSAGES_KEY).then(raw => {
-      if (raw) {
-        try { setMessages(JSON.parse(raw) as ChatMessage[]); } catch {}
-      }
+      if (raw) try { setMessages(JSON.parse(raw)); } catch {}
     }).catch(() => {});
   }, []);
 
-  const persistMessages = (msgs: ChatMessage[]) => {
-    const toStore = msgs.slice(-MAX_STORED);
-    AsyncStorage.setItem(MESSAGES_KEY, JSON.stringify(toStore)).catch(() => {});
-  };
+  function persist(msgs: ChatMessage[]) {
+    AsyncStorage.setItem(MESSAGES_KEY, JSON.stringify(msgs.slice(-MAX_STORED))).catch(() => {});
+  }
 
-  const handleSend = async (text?: string) => {
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+  }, []);
+
+  const handleSend = useCallback(async (text?: string) => {
     const msg = (text ?? input).trim();
     if (!msg || isSending) return;
+
     const userMsg: ChatMessage = {
       id: `${Date.now()}-u`, role: 'user', content: msg, createdAt: Date.now(),
     };
-    const updatedWithUser = [...messages, userMsg];
-    setMessages(updatedWithUser);
-    persistMessages(updatedWithUser);
+    const withUser = [...messages, userMsg];
+    setMessages(withUser);
+    persist(withUser);
     setInput('');
     setIsSending(true);
-    setNotice(null);
+    setStreamBuffer('');
+
+    const streamId = `${Date.now()}-ai`;
+    setStreamingId(streamId);
+
+    // Insert placeholder so user can see it typing
+    const placeholder: ChatMessage = {
+      id: streamId, role: 'assistant', content: '', createdAt: Date.now(),
+    };
+    const withPlaceholder = [...withUser, placeholder];
+    setMessages(withPlaceholder);
+    scrollToBottom();
+
+    let accumulated = '';
+
     try {
-      const reply = await sendAssistantMessage(messages, msg);
-      const updatedWithReply = [...updatedWithUser, reply];
-      setMessages(updatedWithReply);
-      persistMessages(updatedWithReply);
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+      const reply = await sendAssistantMessageStreaming(
+        messages.filter(m => !m.isError),
+        msg,
+        {
+          prefs: { madhab, level, language, mode },
+          onToken: (token) => {
+            accumulated += token;
+            setStreamBuffer(prev => prev + token);
+            setMessages(prev => prev.map(m =>
+              m.id === streamId ? { ...m, content: accumulated } : m
+            ));
+          },
+        }
+      );
+
+      const final = { ...reply, id: streamId };
+      setMessages(prev => {
+        const updated = prev.map(m => m.id === streamId ? final : m);
+        persist(updated);
+        return updated;
+      });
+      scrollToBottom();
     } catch (e) {
-      if (e instanceof AssistantNotConfiguredError) setNotice(e.message);
-      else setNotice(e instanceof Error ? e.message : 'Something went wrong.');
+      const errText = e instanceof AssistantNotConfiguredError
+        ? e.message
+        : e instanceof Error
+          ? e.message
+          : 'Something went wrong.';
+      const errMsg: ChatMessage = {
+        id: streamId, role: 'assistant', content: errText, createdAt: Date.now(), isError: true,
+      };
+      setMessages(prev => {
+        const updated = prev.map(m => m.id === streamId ? errMsg : m);
+        persist(updated);
+        return updated;
+      });
     } finally {
       setIsSending(false);
+      setStreamingId(null);
+      setStreamBuffer('');
     }
-  };
+  }, [input, isSending, messages, madhab, level, language, mode, scrollToBottom]);
 
-  const [alertConfig, setAlertConfig] = useState<{
-    visible: boolean; title: string; message?: string; buttons?: any[];
-  }>({ visible: false, title: '' });
-  const showAlert = (title: string, message?: string, buttons?: any[]) => setAlertConfig({ visible: true, title, message, buttons });
-  const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
-
-  const handleClearChat = () => {
-    showAlert('Clear Conversation', 'This will remove all messages permanently.', [
+  const handleClear = () => {
+    Alert.alert('Clear conversation?', 'This will erase all messages.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => {
-        setMessages([]);
-        AsyncStorage.removeItem(MESSAGES_KEY).catch(() => {});
-      }},
+      {
+        text: 'Clear', style: 'destructive', onPress: () => {
+          setMessages([]);
+          AsyncStorage.removeItem(MESSAGES_KEY).catch(() => {});
+        }
+      },
     ]);
   };
 
-  const handleShareMessage = async (content: string) => {
-    try { await Share.share({ message: content }); } catch {}
-  };
+  const handleSave = useCallback((msg: ChatMessage) => {
+    const userQ = [...messages].reverse().find(m => m.role === 'user' && m.createdAt < msg.createdAt);
+    saveAnswer(userQ?.content ?? 'Question', msg.content, mode);
+    Alert.alert('Saved!', 'Answer saved to your library.');
+  }, [messages, mode, saveAnswer]);
 
-  const onInputFocus = () => Animated.spring(inputScaleAnim, { toValue: 1.01, useNativeDriver: true, tension: 300, friction: 10 }).start();
-  const onInputBlur  = () => Animated.spring(inputScaleAnim, { toValue: 1, useNativeDriver: true, tension: 300, friction: 10 }).start();
+  const currentMode = CONVERSATION_MODES.find(m => m.key === mode)!;
+  const placeholder = language === 'ur'
+    ? currentMode.placeholderUr
+    : currentMode.placeholder;
 
-  const hasMessages = messages.length > 0;
-  const charCount   = input.length;
+  const isEmpty = messages.length === 0;
 
   return (
-    <ScreenContainer noPadding>
-      <StatusBar barStyle="light-content" />
-
+    <KeyboardAvoidingView
+      style={[styles.root, { backgroundColor: bg }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
+    >
       {/* ── Header ── */}
-      <LinearGradient colors={['#060C1F', '#0B1330', '#041923']} style={styles.header}>
-        <View style={styles.headerDecor} />
+      <LinearGradient colors={['#060C1F', '#0D1A45']} style={styles.header}>
+        {/* Row 1: avatar + title + lang toggle + clear */}
         <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <LinearGradient colors={['rgba(56,189,248,0.2)', 'rgba(56,189,248,0.08)']} style={styles.aiAvatar}>
-              <Ionicons name="sparkles" size={24} color="#38BDF8" />
-            </LinearGradient>
-            <View>
-              <Text style={styles.headerTitle}>AI Assistant</Text>
-              <Text style={styles.headerSub}>Islamic context · Powered by Groq</Text>
-            </View>
+          <LinearGradient colors={['#1A2E7A', '#0A1245']} style={styles.headerAvatar}>
+            <Text style={{ fontSize: 20 }}>🕌</Text>
+          </LinearGradient>
+          <View style={styles.headerTitles}>
+            <Text style={styles.headerTitle}>IlmAI</Text>
+            <Text style={styles.headerSub}>Islamic Knowledge Assistant</Text>
           </View>
-          <View style={styles.headerRight}>
-            <View style={styles.statusBadge}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>Online</Text>
-            </View>
-            {hasMessages && (
-              <TouchableOpacity onPress={handleClearChat} style={styles.clearBtn}>
-                <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.5)" />
-              </TouchableOpacity>
+
+          {/* Language toggle button */}
+          <View style={{ position: 'relative' }}>
+            <TouchableOpacity
+              style={styles.langPill}
+              onPress={() => setLangOpen(v => !v)}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="globe-outline" size={13} color={colors.gold[300]} />
+              <Text style={styles.langPillText}>{LANG_LABELS[language]}</Text>
+              <Ionicons name={langOpen ? 'chevron-up' : 'chevron-down'} size={11} color="rgba(255,255,255,0.4)" />
+            </TouchableOpacity>
+            {langOpen && (
+              <View style={[styles.langDropdown, { backgroundColor: isDark ? '#1A2E7A' : '#0D1A45' }]}>
+                {AI_LANGS.map(l => (
+                  <TouchableOpacity
+                    key={l}
+                    style={[styles.langOption, language === l && styles.langOptionActive]}
+                    onPress={() => { setLanguage(l); setLangOpen(false); }}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.langOptionText, language === l && { color: colors.gold[300] }]}>
+                      {LANG_LABELS[l]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             )}
           </View>
+
+          {messages.length > 0 && (
+            <TouchableOpacity onPress={handleClear} style={styles.clearBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.35)" />
+            </TouchableOpacity>
+          )}
         </View>
+
+        {/* Row 2: Mode chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modesRow}>
+          {CONVERSATION_MODES.map(m => {
+            const active = mode === m.key;
+            return (
+              <TouchableOpacity
+                key={m.key}
+                style={[
+                  styles.modeChip,
+                  active
+                    ? { backgroundColor: m.color + '28', borderColor: m.color }
+                    : { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)' },
+                ]}
+                onPress={() => setMode(m.key)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.modeIcon}>{m.icon}</Text>
+                <Text style={[styles.modeLabel, active && { color: m.color }]}>
+                  {language === 'ur' ? m.labelUr : m.labelEn}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </LinearGradient>
 
-      {/* ── Notice ── */}
-      {notice && (
-        <View style={styles.noticeBanner}>
-          <Ionicons name="alert-circle" size={15} color="#FCD34D" />
-          <Text style={styles.noticeText}>{notice}</Text>
-          <TouchableOpacity onPress={() => setNotice(null)}>
-            <Ionicons name="close" size={15} color="#FCD34D" />
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* ── Content ── */}
+      {isEmpty ? (
+        <ScrollView
+          style={styles.emptyScroll}
+          contentContainerStyle={styles.emptyContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Onboarding card — shown only first time */}
+          {!onboarded && (
+            <OnboardingCard
+              onDone={(m, l) => completeOnboarding(m, l)}
+              isDark={isDark}
+              surface={surface}
+              border={border}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+            />
+          )}
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}
-      >
+          {/* Smart suggestions */}
+          <View style={styles.suggestionsSection}>
+            <Text style={[styles.suggestionsLabel, { color: textMuted }]}>
+              {language === 'ur' ? '💡 آج کیا پوچھنا چاہتے ہیں؟' : '💡 Try asking…'}
+            </Text>
+            {suggestions.map((s, i) => {
+              const modeInfo = CONVERSATION_MODES.find(m => m.key === s.mode)!;
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={[styles.suggestionCard, { backgroundColor: surface, borderColor: border }]}
+                  onPress={() => handleSend(language === 'ur' ? s.textUr : s.text)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.suggestionMode, { backgroundColor: modeInfo.color + '18' }]}>
+                    <Text style={{ fontSize: 12 }}>{modeInfo.icon}</Text>
+                  </View>
+                  <Text style={[styles.suggestionText, { color: textPrimary }]} numberOfLines={2}>
+                    {language === 'ur' ? s.textUr : s.text}
+                  </Text>
+                  <Ionicons name="arrow-forward" size={14} color={isDark ? 'rgba(255,255,255,0.2)' : colors.parchment[300]} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
+      ) : (
         <FlatList
           ref={listRef}
           data={messages}
-          keyExtractor={m => m.id}
-          contentContainerStyle={hasMessages ? styles.listContent : styles.emptyContent}
-          onContentSizeChange={() => { if (hasMessages) listRef.current?.scrollToEnd({ animated: true }); }}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <LinearGradient colors={['#0B1330', '#1E2F6B']} style={styles.emptyIconWrap}>
-                <Text style={[styles.emptyIconAr, { fontFamily: 'Amiri_400Regular' }]}>بِسْم</Text>
-                <Ionicons name="sparkles" size={16} color={colors.gold[400]} />
-              </LinearGradient>
-              <Text style={styles.emptyTitle}>Ask me anything Islamic</Text>
-              <Text style={styles.emptyDesc}>
-                I can answer questions about the Quran, Hadith, Islamic history, and more. Ask in any language.
-              </Text>
-              <Text style={styles.suggestLabel}>SUGGESTED QUESTIONS</Text>
-              {SUGGESTIONS.map(s => (
-                <TouchableOpacity
-                  key={s.text}
-                  style={styles.suggestionRow}
-                  onPress={() => handleSend(s.text)}
-                  activeOpacity={0.78}
-                >
-                  <View style={[styles.suggestIconWrap, { backgroundColor: s.color + '18' }]}>
-                    <Ionicons name={s.icon} size={16} color={s.color} />
-                  </View>
-                  <Text style={styles.suggestionText}>{s.text}</Text>
-                  <Ionicons name="arrow-forward" size={13} color={colors.parchment[300]} />
-                </TouchableOpacity>
-              ))}
-            </View>
-          }
+          keyExtractor={item => item.id}
+          style={{ flex: 1, backgroundColor: bg }}
+          contentContainerStyle={styles.messageList}
+          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              onLongPress={() => item.role === 'assistant' && handleShareMessage(item.content)}
-              activeOpacity={1}
-            >
-              <ChatBubble message={item} />
-            </TouchableOpacity>
-          )}
-          ListFooterComponent={
-            isSending ? (
-              <View style={styles.typingRow}>
-                <LinearGradient colors={['#0B1330', '#1E2F6B']} style={styles.typingAvatar}>
-                  <Text style={[styles.typingAvatarText, { fontFamily: 'Amiri_400Regular' }]}>ك</Text>
-                </LinearGradient>
-                <View style={styles.typingBubble}>
-                  <ActivityIndicator size="small" color="#38BDF8" />
-                  <Text style={styles.typingText}>Thinking…</Text>
-                </View>
-              </View>
-            ) : null
-          }
-        />
-
-        {/* ── Input ── */}
-        <View style={styles.inputWrap}>
-          <Animated.View style={[styles.inputRow, { transform: [{ scale: inputScaleAnim }] }]}>
-            <TextInput
-              value={input}
-              onChangeText={setInput}
-              placeholder="Ask a question…"
-              placeholderTextColor={colors.parchment[400]}
-              style={styles.input}
-              editable={!isSending}
-              multiline
-              maxLength={500}
-              onFocus={onInputFocus}
-              onBlur={onInputBlur}
+            <Bubble
+              msg={item}
+              isStreaming={item.id === streamingId}
+              isDark={isDark}
+              surface={surface}
+              border={border}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+              onLongPress={() => item.role === 'assistant' && !item.isError && handleSave(item)}
             />
-            <TouchableOpacity
-              style={[styles.sendBtn, (!input.trim() || isSending) && styles.sendBtnOff]}
-              onPress={() => handleSend()}
-              disabled={!input.trim() || isSending}
-            >
-              {isSending
-                ? <ActivityIndicator size="small" color={colors.white} />
-                : <Ionicons name="send" size={16} color={colors.white} />
-              }
-            </TouchableOpacity>
-          </Animated.View>
-          <View style={styles.inputFooter}>
-            <Text style={styles.disclaimer}>AI-generated responses — verify with qualified scholars.</Text>
-            {charCount > 0 && (
-              <Text style={[styles.charCount, charCount > 450 && { color: colors.semantic.error }]}>
-                {charCount}/500
+          )}
+          ListFooterComponent={isSending && !streamingId ? (
+            <View style={styles.typingRow}>
+              <ActivityIndicator size="small" color={colors.gold[400]} />
+              <Text style={[styles.typingText, { color: textMuted }]}>
+                {language === 'ur' ? 'جواب تیار ہو رہا ہے…' : 'Thinking…'}
               </Text>
-            )}
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-      <CustomAlert
-        visible={alertConfig.visible}
-        title={alertConfig.title}
-        message={alertConfig.message}
-        buttons={alertConfig.buttons}
-        onDismiss={hideAlert}
-      />
-    </ScreenContainer>
+            </View>
+          ) : null}
+        />
+      )}
+
+      {/* Save hint */}
+      {!isEmpty && (
+        <Text style={[styles.saveHint, { color: textMuted }]}>
+          {language === 'ur' ? 'جواب محفوظ کرنے کے لیے دبا کر رکھیں' : 'Long-press any answer to save it'}
+        </Text>
+      )}
+
+      {/* ── Input ── */}
+      <View style={[styles.inputBar, { backgroundColor: surface, borderTopColor: border }]}>
+        <TextInput
+          style={[styles.input, { color: textPrimary, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.parchment[50] }]}
+          value={input}
+          onChangeText={setInput}
+          placeholder={placeholder}
+          placeholderTextColor={textMuted}
+          multiline
+          maxLength={1200}
+          returnKeyType="default"
+          textAlign={language === 'ar' || language === 'ur' ? 'right' : 'left'}
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, (!input.trim() || isSending) && styles.sendBtnDisabled]}
+          onPress={() => handleSend()}
+          disabled={!input.trim() || isSending}
+          activeOpacity={0.8}
+        >
+          {isSending
+            ? <ActivityIndicator size="small" color={colors.white} />
+            : <Ionicons name="send" size={18} color={colors.white} />}
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  root: { flex: 1 },
 
-  header: { paddingTop: spacing.xl + spacing.lg, paddingBottom: spacing.xl, paddingHorizontal: spacing.lg, overflow: 'hidden' },
-  headerDecor: { position: 'absolute', right: -40, top: -40, width: 160, height: 160, borderRadius: 80, borderWidth: 1, borderColor: 'rgba(56,189,248,0.12)' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  aiAvatar: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(56,189,248,0.3)' },
-  aiAvatarText: { fontSize: 22, color: '#38BDF8' },
-  headerTitle: { ...typography.heading, color: colors.white },
-  headerSub: { ...typography.caption, color: 'rgba(255,255,255,0.3)', marginTop: 2 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(74,222,128,0.15)', borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(74,222,128,0.3)' },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#4ADE80' },
-  statusText: { fontSize: 11, color: '#4ADE80', fontWeight: '700' },
-  clearBtn: { padding: spacing.xs },
+  // ── Header ──
+  header: {
+    paddingTop: 50,
+    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  headerAvatar: {
+    width: 40, height: 40, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerTitles: { flex: 1 },
+  headerTitle:  { fontSize: 17, fontWeight: '800', color: colors.white, letterSpacing: 0.2 },
+  headerSub:    { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '500' },
 
-  noticeBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: 'rgba(252,211,77,0.1)', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: 'rgba(252,211,77,0.15)' },
-  noticeText: { ...typography.caption, color: '#FCD34D', flex: 1 },
+  // Lang toggle
+  langPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radius.pill,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  langPillText: { fontSize: 12, fontWeight: '700', color: colors.white },
+  langDropdown: {
+    position: 'absolute', top: 36, right: 0,
+    borderRadius: radius.md, overflow: 'hidden',
+    zIndex: 99, minWidth: 100,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+  },
+  langOption: { paddingHorizontal: spacing.md, paddingVertical: 10 },
+  langOptionActive: { backgroundColor: 'rgba(212,169,62,0.15)' },
+  langOptionText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
 
-  listContent: { paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, gap: spacing.sm },
-  emptyContent: { flex: 1 },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.lg },
-  emptyIconWrap: { width: 80, height: 80, borderRadius: 22, alignItems: 'center', justifyContent: 'center', gap: 4, ...shadow.navy },
-  emptyIconAr: { fontSize: 22, color: colors.gold[300] },
-  emptyTitle: { ...typography.heading, color: colors.parchment[900], textAlign: 'center' },
-  emptyDesc: { ...typography.bodySmall, color: colors.parchment[500], textAlign: 'center', lineHeight: 22 },
-  suggestLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.8, color: colors.parchment[400], alignSelf: 'flex-start' },
-  suggestionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, width: '100%', backgroundColor: colors.white, borderRadius: radius.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderWidth: 1, borderColor: colors.parchment[200], ...shadow.xs },
-  suggestIconWrap: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  suggestionText: { ...typography.bodySmall, color: colors.navy[700], flex: 1 },
+  clearBtn: { padding: 4 },
 
-  typingRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
-  typingAvatar: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  typingAvatarText: { fontSize: 17, color: colors.gold[400] },
-  typingBubble: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.white, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...shadow.xs },
-  typingText: { ...typography.caption, color: colors.parchment[500] },
+  // Mode chips
+  modesRow: { paddingBottom: spacing.xs, paddingHorizontal: 2, gap: spacing.sm },
+  modeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: spacing.md, paddingVertical: 6,
+    borderRadius: radius.pill, borderWidth: 1,
+  },
+  modeIcon:  { fontSize: 13 },
+  modeLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
 
-  inputWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.md, borderTopWidth: 1, borderTopColor: colors.parchment[200], backgroundColor: colors.parchment[50], gap: spacing.xs },
-  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.parchment[300], paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...shadow.xs },
-  input: { flex: 1, ...typography.body, color: colors.parchment[950], maxHeight: 100, paddingVertical: Platform.OS === 'ios' ? spacing.sm : 0 },
-  sendBtn: { width: 38, height: 38, borderRadius: radius.pill, backgroundColor: colors.navy[800], alignItems: 'center', justifyContent: 'center', ...shadow.sm },
-  sendBtnOff: { backgroundColor: colors.parchment[300] },
-  inputFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  disclaimer: { fontSize: 10, color: colors.parchment[400], letterSpacing: 0.2, flex: 1 },
-  charCount: { fontSize: 10, color: colors.parchment[400], fontWeight: '600' },
+  // ── Empty state ──
+  emptyScroll: { flex: 1 },
+  emptyContent: { padding: spacing.lg, paddingBottom: 120, gap: spacing.lg },
+
+  suggestionsSection: { gap: spacing.sm },
+  suggestionsLabel:   { ...typography.caption, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
+  suggestionCard: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    borderRadius: radius.md, padding: spacing.md,
+    borderWidth: 1,
+  },
+  suggestionMode: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  suggestionText: { flex: 1, ...typography.bodySmall, lineHeight: 20 },
+
+  // ── Onboarding ──
+  onboardCard: { borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1 },
+  onboardGrad: {
+    padding: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  onboardIcon: { fontSize: 36 },
+  onboardTitle: { fontSize: 18, fontWeight: '800', color: colors.white },
+  onboardSub:   { fontSize: 13, color: 'rgba(255,255,255,0.5)' },
+  onboardBody:  { padding: spacing.lg, gap: spacing.sm },
+  onboardLabel: { ...typography.caption, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
+  onboardChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  onboardChip: {
+    paddingHorizontal: spacing.md, paddingVertical: 7,
+    borderRadius: radius.pill, borderWidth: 1,
+    backgroundColor: 'transparent',
+  },
+  onboardChipActive: { backgroundColor: colors.gold[400], borderColor: colors.gold[400] },
+  onboardChipText:   { fontSize: 13, fontWeight: '600' },
+  onboardChipTextActive: { color: colors.navy[900] },
+  onboardLevels: { gap: spacing.sm },
+  onboardLevel: {
+    padding: spacing.md, borderRadius: radius.md, borderWidth: 1,
+  },
+  onboardLevelActive: { borderColor: colors.gold[400], backgroundColor: 'rgba(212,169,62,0.07)' },
+  onboardLevelTitle:  { fontSize: 14, fontWeight: '700' },
+  onboardLevelDesc:   { fontSize: 12, marginTop: 2 },
+  onboardBtn: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.gold[400],
+    borderRadius: radius.pill,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  onboardBtnText: { fontSize: 15, fontWeight: '800', color: colors.navy[900] },
+
+  // ── Messages ──
+  messageList: { padding: spacing.lg, paddingBottom: 140, gap: spacing.md },
+
+  bubbleRow:     { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-end' },
+  bubbleRowUser: { justifyContent: 'flex-end' },
+  bubbleRowAi:   { justifyContent: 'flex-start' },
+
+  aiAvatar: {
+    width: 34, height: 34, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0, marginBottom: 2,
+  },
+
+  bubble: { maxWidth: '82%', borderRadius: radius.md, padding: spacing.md, borderWidth: 1 },
+  bubbleUser: {
+    backgroundColor: colors.navy[700],
+    borderColor: colors.navy[600],
+  },
+  bubbleAi: { /* uses surface/border from props */ },
+  bubbleError: { borderColor: '#EF4444', backgroundColor: 'rgba(239,68,68,0.06)' },
+
+  bubbleUserText:  { ...typography.body, color: colors.white, lineHeight: 22 },
+  bubbleErrorText: { ...typography.body, fontStyle: 'italic', lineHeight: 22 },
+
+  typingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
+  typingText: { ...typography.bodySmall, fontStyle: 'italic' },
+
+  saveHint: { textAlign: 'center', ...typography.caption, paddingBottom: 4, paddingTop: 2 },
+
+  // ── Input bar ──
+  inputBar: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? 28 : spacing.md,
+    borderTopWidth: 1,
+  },
+  input: {
+    flex: 1,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    fontSize: 15,
+    maxHeight: 120,
+    lineHeight: 22,
+  },
+  sendBtn: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: colors.gold[500],
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sendBtnDisabled: { backgroundColor: 'rgba(150,150,150,0.3)' },
 });

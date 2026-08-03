@@ -25,3 +25,5 @@ service-account.json
 # Editor
 .vscode/
 .idea/
+
+android/app/google-services.json

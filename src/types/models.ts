@@ -35,6 +35,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   createdAt: number;
+  isError?: boolean;
 }
 
 export interface HadithCollection {
@@ -155,3 +156,21 @@ export const PRAYER_METHODS: { value: PrayerCalculationMethod; label: string }[]
   { value: 4, label: 'Umm Al-Qura University, Makkah' },
   { value: 5, label: 'Egyptian General Authority of Survey' },
 ];
+
+export type ComprehensionLevel = 'yes' | 'partially' | 'no';
+
+export interface ComprehensionEntry {
+  id: string; // `comp:${surahNumber}:${ayahNumber}`
+  surahNumber: number;
+  surahName: string;
+  ayahNumber: number;
+  arabicText: string;
+  translation: string;
+  level: ComprehensionLevel;
+  savedAt: number;
+}
+
+export interface RamadanJuzEntry {
+  juz: number;
+  completedAt: number; // timestamp
+}

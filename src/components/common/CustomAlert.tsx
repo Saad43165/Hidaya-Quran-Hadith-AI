@@ -73,6 +73,7 @@ export function CustomAlert({ visible, title, message, buttons = [], onDismiss }
                   btn.onPress?.();
                   onDismiss();
                 }}
+                activeOpacity={0.7}
               >
                 <Text
                   style={[

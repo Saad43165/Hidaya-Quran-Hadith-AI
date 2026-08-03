@@ -50,6 +50,18 @@ export const colors = {
     warning: '#8A6010',
     warningLight: '#FDF3DF',
   },
+  // Red colors for heart/warnings
+  red: {
+    500: '#EF4444',
+  },
+  // Indigo colors for Prophet's names/secondary accent
+  indigo: {
+    50: '#EEF2FF',
+    200: '#C7D2FE',
+    500: '#6366F1',
+    600: '#4F46E5',
+    900: '#312E81',
+  },
   // Pure
   white: '#FFFFFF',
   black: '#000000',

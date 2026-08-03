@@ -1,15 +1,44 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { navigate } from '../../navigation/navigationRef';
 import { useAudioStore } from '../../store/useAudioStore';
 import { useThemeStore } from '../../store/useThemeStore';
+import { Haptics } from '../../services/haptics';
 import { colors, radius, shadow, spacing, typography } from '../../theme';
 import { darkColors } from '../../theme/darkColors';
 
+const SLEEP_TIMER_PRESETS = [5, 15, 30, 45, 60];
+
 export function MiniPlayer() {
-  const { currentSurah, currentAyahIndex, isPlaying, resume, pause, playNext, playPrev, stop } = useAudioStore();
+  const {
+    currentSurah, currentAyahIndex, isPlaying, resume, pause, playNext, playPrev, stop,
+    repeatMode, cycleRepeatMode, sleepTimerEndsAt, setSleepTimer,
+  } = useAudioStore();
   const { isDark } = useThemeStore();
+  const [sleepMenuVisible, setSleepMenuVisible] = useState(false);
+  const [remainingLabel, setRemainingLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sleepTimerEndsAt) {
+      setRemainingLabel(null);
+      return;
+    }
+
+    const updateLabel = () => {
+      const msLeft = sleepTimerEndsAt - Date.now();
+      if (msLeft <= 0) {
+        setRemainingLabel(null);
+        return;
+      }
+      const minsLeft = Math.max(1, Math.round(msLeft / 60000));
+      setRemainingLabel(`${minsLeft}m`);
+    };
+
+    updateLabel();
+    const interval = setInterval(updateLabel, 30000);
+    return () => clearInterval(interval);
+  }, [sleepTimerEndsAt]);
 
   if (!currentSurah || currentAyahIndex === -1) return null;
 
@@ -27,6 +56,22 @@ export function MiniPlayer() {
       surahNumber: currentSurah.number,
       englishName: currentSurah.englishName,
     });
+  };
+
+  const handlePlayPause = () => {
+    Haptics.impact('light');
+    isPlaying ? pause() : resume();
+  };
+
+  const handlePrev = () => { Haptics.impact('light'); playPrev(); };
+  const handleNext = () => { Haptics.impact('light'); playNext(); };
+  const handleStop = () => { Haptics.impact('light'); stop(); };
+  const handleRepeat = () => { Haptics.impact('light'); cycleRepeatMode(); };
+  const handleOpenSleepMenu = () => { Haptics.impact('light'); setSleepMenuVisible(true); };
+  const handleSelectSleepPreset = (minutes: number | null) => {
+    Haptics.impact('light');
+    setSleepTimer(minutes);
+    setSleepMenuVisible(false);
   };
 
   return (
@@ -55,32 +100,98 @@ export function MiniPlayer() {
       </TouchableOpacity>
 
       <View style={styles.controls}>
-        <TouchableOpacity onPress={playPrev} style={styles.controlBtn}>
+        <TouchableOpacity onPress={handleRepeat} style={styles.controlBtn} activeOpacity={0.7}>
+          <Ionicons
+            name={repeatMode === 'verse' ? 'repeat' : 'repeat'}
+            size={16}
+            color={repeatMode === 'off' ? (isDark ? darkColors.text.secondary : colors.parchment[400]) : colors.gold[600]}
+          />
+          {repeatMode === 'verse' && (
+            <Text style={styles.repeatBadge}>1</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handlePrev} style={styles.controlBtn} activeOpacity={0.7}>
           <Ionicons name="play-back" size={18} color={isDark ? darkColors.text.secondary : colors.parchment[600]} />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          onPress={isPlaying ? pause : resume} 
+        <TouchableOpacity
+          onPress={handlePlayPause}
           style={[
-            styles.playBtn, 
+            styles.playBtn,
             { backgroundColor: isPlaying ? 'rgba(214,40,40,0.1)' : 'rgba(212,169,62,0.1)' }
           ]}
+          activeOpacity={0.7}
         >
-          <Ionicons 
-            name={isPlaying ? 'pause' : 'play'} 
-            size={18} 
-            color={isPlaying ? '#D62828' : colors.gold[600]} 
+          <Ionicons
+            name={isPlaying ? 'pause' : 'play'}
+            size={18}
+            color={isPlaying ? '#D62828' : colors.gold[600]}
           />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={playNext} style={styles.controlBtn}>
+        <TouchableOpacity onPress={handleNext} style={styles.controlBtn} activeOpacity={0.7}>
           <Ionicons name="play-forward" size={18} color={isDark ? darkColors.text.secondary : colors.parchment[600]} />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={stop} style={[styles.controlBtn, styles.closeBtn]}>
+        <TouchableOpacity onPress={handleOpenSleepMenu} style={styles.controlBtn} activeOpacity={0.7}>
+          <Ionicons
+            name={remainingLabel ? 'moon' : 'moon-outline'}
+            size={16}
+            color={remainingLabel ? colors.gold[600] : (isDark ? darkColors.text.secondary : colors.parchment[400])}
+          />
+          {remainingLabel && (
+            <Text style={styles.sleepBadge}>{remainingLabel}</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleStop} style={[styles.controlBtn, styles.closeBtn]} activeOpacity={0.7}>
           <Ionicons name="close" size={18} color="rgba(214,40,40,0.6)" />
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={sleepMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSleepMenuVisible(false)}
+      >
+        <Pressable style={styles.sheetOverlay} onPress={() => setSleepMenuVisible(false)}>
+          <Pressable
+            style={[
+              styles.sheetContent,
+              { backgroundColor: isDark ? darkColors.surface : colors.white, borderColor: isDark ? darkColors.border : colors.parchment[200] },
+            ]}
+            onPress={() => {}}
+          >
+            <Text style={[styles.sheetTitle, { color: isDark ? darkColors.text.primary : colors.navy[900] }]}>
+              Sleep Timer
+            </Text>
+            {SLEEP_TIMER_PRESETS.map((minutes) => (
+              <TouchableOpacity
+                key={minutes}
+                style={styles.sheetOption}
+                onPress={() => handleSelectSleepPreset(minutes)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.sheetOptionText, { color: isDark ? darkColors.text.primary : colors.navy[900] }]}>
+                  {minutes} min
+                </Text>
+                {sleepTimerEndsAt !== null && useAudioStore.getState().sleepTimerMinutes === minutes && (
+                  <Ionicons name="checkmark" size={18} color={colors.gold[600]} />
+                )}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={() => handleSelectSleepPreset(null)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.sheetOptionText, { color: '#D62828' }]}>Off</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -150,6 +261,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.pill,
   },
+  repeatBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    fontSize: 8,
+    fontWeight: '800',
+    color: colors.gold[600],
+  },
   playBtn: {
     width: 36,
     height: 36,
@@ -159,5 +278,39 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     marginLeft: spacing.xs,
+  },
+  sleepBadge: {
+    position: 'absolute',
+    bottom: -2,
+    fontSize: 8,
+    fontWeight: '800',
+    color: colors.gold[600],
+  },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  sheetContent: {
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  sheetTitle: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+  },
+  sheetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+  },
+  sheetOptionText: {
+    ...typography.body,
   },
 });

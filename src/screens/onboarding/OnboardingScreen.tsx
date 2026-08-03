@@ -1,76 +1,260 @@
 import React, { useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Animated, Dimensions, Easing, NativeScrollEvent, NativeSyntheticEvent,
+  ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../../store/useAppStore';
-import { colors, radius, spacing, typography } from '../../theme';
+import { radius, spacing } from '../../theme';
+import { IslamicPattern } from '../../components/common/IslamicPattern';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
+// ─── Slide Data ────────────────────────────────────────────────────────────────
 const SLIDES = [
   {
-    icon: 'book' as const,
-    titleKey: 'onboarding.title1',
-    subtitleKey: 'onboarding.subtitle1',
+    arabicWord: 'اقْرَأْ',
+    transliteration: 'Iqra',
+    meaning: 'Read',
     accentColor: '#F59E0B',
-    gradientColors: ['#0B0D1F', '#0F1C42', '#1A2A6C'] as [string, string, string],
-    arabicText: 'اقْرَأْ',
-    arabicMeaning: 'Iqra — Read',
-    features: ['114 Surahs with translation', '6,236 verses', 'Arabic & Urdu'],
+    gradientColors: ['#060C1F', '#0D1535', '#1A2462'] as [string, string, string],
+    headline: 'The Holy Quran',
+    tagline: 'Begin with the word of Allah',
+    features: [
+      '114 Surahs with full translation',
+      'Arabic text with Tajweed marks',
+      'Urdu & English side by side',
+    ],
   },
   {
-    icon: 'library' as const,
-    titleKey: 'onboarding.title2',
-    subtitleKey: 'onboarding.subtitle2',
-    accentColor: '#4ADE80',
-    gradientColors: ['#062316', '#0B3D2E', '#1A6B4A'] as [string, string, string],
-    arabicText: 'عِلْم',
-    arabicMeaning: 'Ilm — Knowledge',
-    features: ['Authentic Hadith collections', 'Bookmarks & notes', 'Offline access'],
+    arabicWord: 'عِلْم',
+    transliteration: 'Ilm',
+    meaning: 'Knowledge',
+    accentColor: '#10B981',
+    gradientColors: ['#050F0A', '#0A1F15', '#0F3024'] as [string, string, string],
+    headline: 'Hadith · Prayer · AI',
+    tagline: 'Deepen your understanding every day',
+    features: [
+      'Authentic Hadith collections',
+      'Accurate GPS prayer times & Qibla',
+      'AI scholar — ask any Islamic question',
+    ],
   },
   {
-    icon: 'chatbubble-ellipses' as const,
-    titleKey: 'onboarding.title3',
-    subtitleKey: 'onboarding.subtitle3',
-    accentColor: '#38BDF8',
-    gradientColors: ['#041923', '#0B2A35', '#0E4A6B'] as [string, string, string],
-    arabicText: 'نُور',
-    arabicMeaning: 'Noor — Light',
-    features: ['AI-powered assistant', 'Prayer times & Qibla', 'Context-aware answers'],
-  },
-  {
-    icon: 'chatbubble-ellipses' as const,
-    titleKey: 'onboarding.title4',
-    subtitleKey: 'onboarding.subtitle4',
-    accentColor: '#C084FC',
-    gradientColors: ['#1C0633', '#3B0764', '#5B21B6'] as [string, string, string],
-    arabicText: 'عَقْل',
-    arabicMeaning: 'Aql — Intellect',
-    features: ['Ask about any verse or hadith', 'Understands your reading context', 'Powered by advanced AI'],
+    arabicWord: 'بِسْمِ اللهِ',
+    transliteration: 'Bismillah',
+    meaning: 'In the name of Allah',
+    accentColor: '#8B5CF6',
+    gradientColors: ['#0A0514', '#130A2A', '#1E1040'] as [string, string, string],
+    headline: 'Begin Your Journey',
+    tagline: 'A premium Islamic companion awaits',
+    features: [
+      'Works fully offline — no account needed',
+      'Bookmarks, streaks & learning goals',
+      'Beautiful dark design for night reading',
+    ],
   },
 ];
 
+const onboardingPatternStyle = {
+  top: height * 0.08,
+  alignSelf: 'center' as const,
+};
+
+// ─── Single slide ─────────────────────────────────────────────────────────────
+function SlideContent({ slide, isActive }: { slide: typeof SLIDES[0]; isActive: boolean }) {
+  const fadeAnim   = useRef(new Animated.Value(0)).current;
+  const slideUpAnim = useRef(new Animated.Value(40)).current;
+  const scaleAnim  = useRef(new Animated.Value(0.82)).current;
+
+  React.useEffect(() => {
+    if (isActive) {
+      Animated.parallel([
+        Animated.timing(fadeAnim,   { toValue: 1, duration: 550, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+        Animated.spring(slideUpAnim, { toValue: 0, useNativeDriver: true, tension: 180, friction: 18 }),
+        Animated.spring(scaleAnim,  { toValue: 1, useNativeDriver: true, tension: 180, friction: 16 }),
+      ]).start();
+    } else {
+      fadeAnim.setValue(0);
+      slideUpAnim.setValue(40);
+      scaleAnim.setValue(0.82);
+    }
+  }, [isActive]);
+
+  return (
+    <View style={[ss.slide, { width }]}>
+      {/* Islamic geometric pattern backdrop */}
+      <IslamicPattern accentColor={slide.accentColor} size={320} style={onboardingPatternStyle} />
+
+      {/* Arabic calligraphy hero word */}
+      <Animated.Text
+        style={[
+          ss.arabicHero,
+          {
+            color: slide.accentColor,
+            fontFamily: 'Amiri_400Regular',
+            opacity: fadeAnim,
+            transform: [{ translateY: slideUpAnim }, { scale: scaleAnim }],
+          },
+        ]}
+      >
+        {slide.arabicWord}
+      </Animated.Text>
+
+      {/* Transliteration + meaning */}
+      <Animated.View style={[ss.transRow, { opacity: fadeAnim }]}>
+        <View style={[ss.transLine, { backgroundColor: slide.accentColor + '60' }]} />
+        <Text style={[ss.transText, { color: slide.accentColor }]}>
+          {slide.transliteration}  ·  {slide.meaning}
+        </Text>
+        <View style={[ss.transLine, { backgroundColor: slide.accentColor + '60' }]} />
+      </Animated.View>
+
+      {/* Headline */}
+      <Animated.Text
+        style={[ss.headline, { opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }]}
+      >
+        {slide.headline}
+      </Animated.Text>
+
+      {/* Tagline */}
+      <Animated.Text
+        style={[ss.tagline, { opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }]}
+      >
+        {slide.tagline}
+      </Animated.Text>
+
+      {/* Feature list */}
+      <Animated.View
+        style={[ss.featureList, { opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }]}
+      >
+        {slide.features.map((f, i) => (
+          <View key={i} style={ss.featureRow}>
+            <View style={[ss.check, { backgroundColor: slide.accentColor + '22', borderColor: slide.accentColor + '55' }]}>
+              <Text style={[ss.checkMark, { color: slide.accentColor }]}>✓</Text>
+            </View>
+            <Text style={ss.featureText}>{f}</Text>
+          </View>
+        ))}
+      </Animated.View>
+    </View>
+  );
+}
+
+const ss = StyleSheet.create({
+  slide: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 40,
+    gap: 12,
+  },
+  arabicHero: {
+    fontSize: 96,
+    lineHeight: 130,
+    textAlign: 'center',
+    marginTop: 60,
+    marginBottom: 0,
+  },
+  transRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  transLine: { flex: 1, height: 1 },
+  transText: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+  },
+  headline: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    letterSpacing: -0.4,
+    marginTop: 4,
+  },
+  tagline: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.45)',
+    textAlign: 'center',
+    lineHeight: 22,
+    fontWeight: '400',
+    marginBottom: 8,
+  },
+  featureList: {
+    width: '100%',
+    gap: 10,
+    marginTop: 8,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  check: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkMark: {
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  featureText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.62)',
+    fontWeight: '500',
+    flex: 1,
+  },
+});
+
+// ─── Main Screen ───────────────────────────────────────────────────────────────
 export function OnboardingScreen() {
   const { t } = useTranslation();
   const setHasOnboarded = useAppStore(s => s.setHasOnboarded);
   const scrollRef = useRef<ScrollView>(null);
   const [idx, setIdx] = useState(0);
 
-  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) =>
-    setIdx(Math.round(e.nativeEvent.contentOffset.x / width));
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const newIdx = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (newIdx !== idx) setIdx(newIdx);
+  };
 
+  const slide  = SLIDES[idx];
   const isLast = idx === SLIDES.length - 1;
-  const slide = SLIDES[idx];
+
+  const handleNext = () => {
+    if (isLast) {
+      setHasOnboarded(true);
+    } else {
+      scrollRef.current?.scrollTo({ x: width * (idx + 1), animated: true });
+    }
+  };
 
   return (
     <LinearGradient colors={slide.gradientColors} style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Skip */}
-      <TouchableOpacity style={styles.skip} onPress={() => setHasOnboarded(true)}>
+      {/* Ambient glow orb top-right */}
+      <View
+        style={[
+          styles.glowOrb,
+          { backgroundColor: slide.accentColor + '18' },
+        ]}
+      />
+
+      {/* Skip button */}
+      <TouchableOpacity style={styles.skip} onPress={() => setHasOnboarded(true)} activeOpacity={0.7}>
         <Text style={styles.skipText}>Skip</Text>
-        <Ionicons name="chevron-forward" size={13} color="rgba(255,255,255,0.3)" />
       </TouchableOpacity>
 
       {/* Slides */}
@@ -82,73 +266,47 @@ export function OnboardingScreen() {
         onMomentumScrollEnd={handleScroll}
         style={styles.flex}
         scrollEventThrottle={16}
+        decelerationRate="fast"
       >
         {SLIDES.map((s, i) => (
-          <View key={i} style={[styles.slide, { width }]}>
-            {/* Large Arabic word */}
-            <Text style={[styles.arabicHero, { color: s.accentColor, fontFamily: 'Amiri_400Regular' }]}>
-              {s.arabicText}
-            </Text>
-            <Text style={[styles.arabicMeaning, { color: `${s.accentColor}AA` }]}>
-              {s.arabicMeaning}
-            </Text>
-
-            {/* Icon display */}
-            <View style={styles.iconContainer}>
-              <View style={[styles.iconRingOuter, { borderColor: `${s.accentColor}18` }]} />
-              <View style={[styles.iconRingInner, { borderColor: `${s.accentColor}30` }]} />
-              <View style={[styles.iconCircle, { backgroundColor: `${s.accentColor}18` }]}>
-                <Ionicons name={s.icon} size={52} color={s.accentColor} />
-              </View>
-            </View>
-
-            <Text style={styles.title}>{t(s.titleKey)}</Text>
-            <Text style={styles.subtitle}>{t(s.subtitleKey)}</Text>
-
-            {/* Feature list */}
-            <View style={styles.featureList}>
-              {s.features.map((f, fi) => (
-                <View key={fi} style={styles.featureRow}>
-                  <View style={[styles.featureDot, { backgroundColor: s.accentColor }]} />
-                  <Text style={styles.featureText}>{f}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          <SlideContent key={i} slide={s} isActive={i === idx} />
         ))}
       </ScrollView>
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <View style={styles.footer}>
-        {/* Dots */}
+        {/* Pill progress dots */}
         <View style={styles.dots}>
-          {SLIDES.map((s, i) => (
+          {SLIDES.map((_, i) => (
             <TouchableOpacity
               key={i}
               onPress={() => scrollRef.current?.scrollTo({ x: width * i, animated: true })}
-              style={[
-                styles.dot,
-                i === idx && { backgroundColor: slide.accentColor, width: 28 },
-                i !== idx && { backgroundColor: 'rgba(255,255,255,0.2)' },
-              ]}
-            />
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <View
+                style={[
+                  styles.dot,
+                  i === idx
+                    ? { backgroundColor: slide.accentColor, width: 32, opacity: 1 }
+                    : { backgroundColor: 'rgba(255,255,255,0.18)', width: 8, opacity: 0.7 },
+                ]}
+              />
+            </TouchableOpacity>
           ))}
         </View>
 
-        {/* CTA */}
+        {/* CTA button */}
         <TouchableOpacity
           style={[styles.cta, { backgroundColor: slide.accentColor }]}
-          onPress={() => {
-            if (isLast) setHasOnboarded(true);
-            else scrollRef.current?.scrollTo({ x: width * (idx + 1), animated: true });
-          }}
-          activeOpacity={0.88}
+          onPress={handleNext}
+          activeOpacity={0.86}
         >
-          <Text style={styles.ctaText}>{isLast ? 'Get Started' : 'Next'}</Text>
-          <Ionicons name={isLast ? 'checkmark' : 'arrow-forward'} size={18} color={colors.navy[900]} />
+          <Text style={styles.ctaText}>
+            {isLast ? t('onboarding.getStarted') : t('onboarding.next')}
+          </Text>
         </TouchableOpacity>
 
-        {/* Bismillah */}
+        {/* Bismillah watermark */}
         <Text style={[styles.bismillah, { fontFamily: 'Amiri_400Regular' }]}>
           بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ
         </Text>
@@ -160,47 +318,64 @@ export function OnboardingScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
+
+  glowOrb: {
+    position: 'absolute',
+    width: 340,
+    height: 340,
+    borderRadius: 170,
+    right: -120,
+    top: -80,
+  },
+
   skip: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    alignSelf: 'flex-end', paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + spacing.lg,
+    alignSelf: 'flex-end',
+    paddingHorizontal: 24,
+    paddingTop: 56,
+    paddingBottom: 8,
   },
-  skipText: { fontSize: 13, color: 'rgba(255,255,255,0.3)', fontWeight: '500' },
-  slide: {
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: spacing.xxl, gap: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  arabicHero: { fontSize: 72, paddingTop: spacing.lg, paddingBottom: spacing.sm },
-  arabicMeaning: { fontSize: 14, fontWeight: '600', letterSpacing: 1.5 },
-
-  // Icon rings
-  iconContainer: { alignItems: 'center', justifyContent: 'center', width: 170, height: 170 },
-  iconRingOuter: { position: 'absolute', width: 170, height: 170, borderRadius: 85, borderWidth: 1 },
-  iconRingInner: { position: 'absolute', width: 140, height: 140, borderRadius: 70, borderWidth: 1 },
-  iconCircle: {
-    width: 110, height: 110, borderRadius: 55,
-    alignItems: 'center', justifyContent: 'center',
+  skipText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.28)',
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
 
-  title: { ...typography.displayMd, color: colors.white, textAlign: 'center' },
-  subtitle: { ...typography.body, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 26 },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    gap: 16,
+    alignItems: 'center',
+  },
 
-  // Feature list
-  featureList: { width: '100%', gap: spacing.sm, marginTop: spacing.xs },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  featureDot: { width: 6, height: 6, borderRadius: 3 },
-  featureText: { ...typography.bodySmall, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
+  dots: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dot: {
+    height: 8,
+    borderRadius: 4,
+  },
 
-  // Footer
-  footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl, gap: spacing.lg, alignItems: 'center' },
-  dots: { flexDirection: 'row', gap: spacing.sm, justifyContent: 'center' },
-  dot: { height: 6, borderRadius: 3, transition: 'width 0.3s' } as any,
   cta: {
-    borderRadius: radius.pill, paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xxxl, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center', gap: spacing.sm, width: '100%',
+    width: '100%',
+    borderRadius: radius.pill,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  ctaText: { ...typography.subheading, color: colors.navy[900] },
-  bismillah: { fontSize: 16, color: 'rgba(255,255,255,0.2)', textAlign: 'center' },
+  ctaText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#060C1F',
+    letterSpacing: 0.2,
+  },
+
+  bismillah: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.15)',
+    textAlign: 'center',
+  },
 });

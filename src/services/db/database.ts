@@ -31,6 +31,21 @@ export function ensureDatabaseReady(): Promise<void> {
         surah_number INTEGER, ayah_number INTEGER, times_in_quran INTEGER,
         saved_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS comprehension (
+        id TEXT PRIMARY KEY NOT NULL,
+        surah_number INTEGER NOT NULL, surah_name TEXT NOT NULL,
+        ayah_number INTEGER NOT NULL, arabic_text TEXT NOT NULL,
+        translation TEXT NOT NULL, level TEXT NOT NULL,
+        saved_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS salah_log (
+        id TEXT PRIMARY KEY NOT NULL,
+        date TEXT NOT NULL,
+        prayer TEXT NOT NULL,
+        completed INTEGER NOT NULL DEFAULT 0,
+        completed_at INTEGER,
+        UNIQUE(date, prayer)
+      );
     `).catch(e => {
       console.warn('[KitaabAI] DB setup error:', e);
       // Reset so next call retries

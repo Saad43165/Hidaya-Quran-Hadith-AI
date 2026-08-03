@@ -13,10 +13,8 @@ export type TabParamList = {
   Home: undefined;
   Quran: undefined;
   Hadith: undefined;
-  Prayer: undefined;
-  Library: undefined;
   Assistant: undefined;
-  Settings: undefined;
+  More: undefined;
 };
 
 export type RootStackParamList = {
@@ -26,12 +24,27 @@ export type RootStackParamList = {
   SurahDetail: { surahNumber: number; englishName: string; initialAyahNumber?: number };
   JuzDetail: { juzNumber: number };
   HadithCollectionDetail: { collectionId: string; name: string; initialHadithNumber?: number };
+  Prayer: undefined;
+  Library: undefined;
+  Settings: undefined;
   Bookmarks: undefined;
   Search: undefined;
   Tasbih: undefined;
   Duas: undefined;
   NamesOfAllah: undefined;
   Vocabulary: undefined;
+  Ramadan: undefined;
+  ComprehensionReview: undefined;
+  Qibla: undefined;
+  SalahTracker: undefined;
+  Adhkar: undefined;
+  IslamicEvents: undefined;
+  ZakatCalculator: undefined;
+  Seerah: undefined;
+  HajjGuide: undefined;
+  ProphetStories: undefined;
+  Sahaba: undefined;
+  IslamicHistory: undefined;
 };
 
 export type TabAndStackNavigation = CompositeNavigationProp<

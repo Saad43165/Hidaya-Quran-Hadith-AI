@@ -28,6 +28,7 @@ export class ErrorBoundary extends Component<PropsWithChildren, State> {
           <TouchableOpacity
             style={styles.btn}
             onPress={() => this.setState({ hasError: false, error: '' })}
+            activeOpacity={0.8}
           >
             <Text style={styles.btnText}>Try Again</Text>
           </TouchableOpacity>

@@ -1,16 +1,19 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { LoadingView, ErrorView } from '../../components/common/AsyncStateView';
 import { BookmarkButton } from '../../components/bookmarks/BookmarkButton';
 import { ReaderSettingsPanel } from '../../components/quran/ReaderSettingsPanel';
+import MushafReader from '../../components/quran/MushafReader';
 import { fetchJuzDetail } from '../../services/api/quranApi';
 import { useAudioStore } from '../../store/useAudioStore';
 import { listBookmarks, addBookmark, removeBookmark } from '../../services/db/bookmarksRepo';
 import { useQuranStore } from '../../store/useQuranStore';
+import { useThemeColors } from '../../hooks/useThemeColors';
+import { useMiniPlayerPadding } from '../../hooks/useMiniPlayerPadding';
 import { JUZ_LIST } from '../../data/juzData';
 import { Ayah } from '../../types/models';
 import { colors, radius, shadow, spacing, typography } from '../../theme';
@@ -20,9 +23,13 @@ type JuzDetailRoute = RouteProp<RootStackParamList, 'JuzDetail'>;
 
 export function JuzDetailScreen() {
   const { params } = useRoute<JuzDetailRoute>();
+  const navigation = useNavigation();
   const juzInfo = JUZ_LIST[params.juzNumber - 1];
-  const { fontSize, readingMode, hydrate } = useQuranStore();
+  const { fontSize, hydrate } = useQuranStore();
+  const [showMushaf, setShowMushaf] = useState(true);
+  const miniPlayerPad = useMiniPlayerPadding();
   const { currentSurah, currentAyahIndex, isPlaying, play: playAudio, pause: pauseAudio, resume: resumeAudio } = useAudioStore();
+  const { isDark, bg, surface, border, textPrimary, textSecondary } = useThemeColors();
 
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +117,7 @@ export function JuzDetailScreen() {
 
   const renderHeader = (
     <View style={styles.header}>
+      <Image source={require('../../../assets/images/islamicbackground.png')} style={styles.headerBgPattern} resizeMode="cover" />
       <TouchableOpacity style={styles.settingsBtn} onPress={() => setSettingsOpen(true)}>
         <Ionicons name="text" size={16} color={colors.gold[400]} />
         <Ionicons name="settings-outline" size={14} color="rgba(255,255,255,0.4)" />
@@ -121,31 +129,34 @@ export function JuzDetailScreen() {
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: bg }}>
       <ScreenContainer noPadding>
-        <ReaderSettingsPanel visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
-        {readingMode === 'flowing' ? (
-          <ScrollView style={styles.list} contentContainerStyle={{ paddingBottom: spacing.xxxl }}>
-            {renderHeader}
-            <View style={styles.flowingPage}>
-              <Text style={[styles.flowingText, { fontSize: fontSize, lineHeight: fontSize * 2.2 }]}>
-                {ayahs.map((item, index) => {
-                  const cleanedText = (item.numberInSurah === 1 && item.surah?.number !== 1 && item.surah?.number !== 9)
-                    ? item.text.replace(/^بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ?/g, '').replace(/^بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ?/g, '').trim()
-                    : item.text;
-                  const marker = String(item.numberInSurah).replace(/[0-9]/g, d => String.fromCharCode(d.charCodeAt(0) + 1584));
-                  const surahMarker = (item.numberInSurah === 1 && index !== 0) ? `\n\n[ ${item.surah?.name} ]\n\n` : '';
-                  return `${surahMarker}${cleanedText} ﴿${marker}﴾ `;
-                }).join('')}
-              </Text>
-            </View>
-          </ScrollView>
+        <ReaderSettingsPanel visible={settingsOpen} onClose={() => setSettingsOpen(false)} hideTranslation />
+        {showMushaf ? (
+          <>
+            <MushafReader
+              surah={{
+                number: params.juzNumber * 1000,
+                name: juzInfo?.arabic ?? `جزء ${params.juzNumber}` ,
+                englishName: `Para ${params.juzNumber}` ,
+                englishNameTranslation: juzInfo?.english ?? '',
+                revelationType: 'Meccan',
+                numberOfAyahs: ayahs.length,
+                ayahs,
+              }}
+              surahNumber={params.juzNumber * 1000}
+              onClose={() => navigation.goBack()}
+            />
+            <TouchableOpacity style={styles.floatSettingsBtn} onPress={() => setSettingsOpen(true)}>
+              <Ionicons name="options-outline" size={18} color={colors.gold[400]} />
+            </TouchableOpacity>
+          </>
         ) : (
           <FlashList
             data={ayahs}
             keyExtractor={(_, i) => String(i)}
-            contentContainerStyle={styles.list}
-            // @ts-ignore
+            style={{ backgroundColor: bg }}
+            contentContainerStyle={[styles.list, { paddingBottom: spacing.xxxl + miniPlayerPad }]}
             estimatedItemSize={250}
             ListHeaderComponent={renderHeader}
             renderItem={({ item }) => {
@@ -159,14 +170,14 @@ export function JuzDetailScreen() {
                 isPlaying;
 
               return (
-                <View style={styles.ayahCard}>
+                <View style={[styles.ayahCard, { backgroundColor: surface }]}>
                   <View style={styles.ayahTop}>
                     <View style={styles.ayahBadgeRow}>
-                      <View style={styles.ayahBadge}>
-                        <Text style={styles.ayahBadgeText}>{item.numberInSurah}</Text>
+                      <View style={[styles.ayahBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.gold[100] }]}>
+                        <Text style={[styles.ayahBadgeText, { color: isDark ? colors.gold[300] : colors.gold[700] }]}>{item.numberInSurah}</Text>
                       </View>
                       {item.surah && (
-                        <Text style={styles.surahNameText}>
+                        <Text style={[styles.surahNameText, { color: textSecondary }]}>
                           {item.surah.englishName}
                         </Text>
                       )}
@@ -185,10 +196,14 @@ export function JuzDetailScreen() {
                       />
                     </View>
                   </View>
-                  <Text style={[styles.arabicText, { fontSize, lineHeight: fontSize * 2, fontFamily: 'Amiri_400Regular' }]}>
+                  <Text style={[styles.arabicText, { fontSize, lineHeight: fontSize * 2, fontFamily: 'Amiri_400Regular', color: textPrimary }]}>
                     {item.text}
                   </Text>
-                  {item.translation ? <Text style={styles.translation}>{item.translation}</Text> : null}
+                  {item.translation ? (
+                    <Text style={[styles.translation, { color: textSecondary, borderTopColor: border }]}>
+                      {item.translation}
+                    </Text>
+                  ) : null}
                 </View>
               );
             }}
@@ -208,7 +223,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.md,
     position: 'relative',
+    overflow: 'hidden',
   },
+  headerBgPattern: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', opacity: 0.07 },
   settingsBtn: {
     position: 'absolute',
     top: spacing.md,
@@ -271,15 +288,21 @@ const styles = StyleSheet.create({
     borderTopColor: colors.parchment[200],
     paddingTop: spacing.md,
   },
+  floatSettingsBtn: {
+    position: 'absolute', bottom: 80, right: 16,
+    backgroundColor: colors.navy[900],
+    borderRadius: radius.pill, padding: 10,
+    borderWidth: 1, borderColor: colors.gold[700],
+    ...shadow.md,
+  },
   flowingPage: {
     marginHorizontal: spacing.lg,
-    backgroundColor: colors.white,
     borderRadius: radius.lg,
     padding: spacing.xl,
+    borderWidth: 1,
     ...shadow.sm,
   },
   flowingText: {
-    color: colors.navy[950],
     textAlign: 'justify',
     writingDirection: 'rtl',
     fontFamily: 'Amiri_400Regular',

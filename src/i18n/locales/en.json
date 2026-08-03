@@ -1,37 +1,105 @@
 {
-  "common": { "appName": "KitaabAI", "loading": "Loading...", "retry": "Retry", "ayahOfDay": "Ayah of the Day", "hadithOfDay": "Hadith of the Day" },
+  "common": {
+    "appName": "KitaabAI",
+    "loading": "Loading...",
+    "retry": "Retry",
+    "ayahOfDay": "Ayah of the Day",
+    "hadithOfDay": "Hadith of the Day"
+  },
   "onboarding": {
-    "title1": "Read the Quran, beautifully", "subtitle1": "Arabic text with translation and audio, always within reach.",
-    "title2": "Hadith by chapter", "subtitle2": "Browse all 10 major collections organised by topic.",
-    "title3": "Ask, and understand", "subtitle3": "An AI companion for questions about what you read.",
-    "title4": "Your AI reading companion", "subtitle4": "Ask anything about what you're reading — the AI knows your page.",
-    "getStarted": "Get Started", "skip": "Skip"
+    "title1": "Read the Quran, beautifully",
+    "subtitle1": "Arabic text with translation and audio, always within reach.",
+    "title2": "Hadith by chapter",
+    "subtitle2": "Browse all 10 major collections organised by topic.",
+    "title3": "Ask, and understand",
+    "subtitle3": "An AI companion for questions about what you read.",
+    "title4": "Your AI reading companion",
+    "subtitle4": "Ask anything about what you're reading — the AI knows your page.",
+    "getStarted": "Get Started",
+    "skip": "Skip",
+    "next": "Next"
   },
-  "nav": { "home": "Home", "quran": "Quran", "hadith": "Hadith", "prayer": "Prayer", "library": "Library", "assistant": "Assistant", "settings": "Settings" },
-  "home": { "greeting": "Assalamu Alaikum", "continueReading": "Continue Reading", "quickAccess": "Quick Access", "saved": "Saved" },
-  "quran": { "surahs": "Surahs", "ayahs": "Ayahs", "meccan": "Meccan", "medinan": "Medinan", "bySurah": "By Surah", "byJuz": "By Juz / Para" },
-  "hadith": { "continueReading": "Continue reading", "allChapters": "All Chapters" },
-  "library": { "discover": "Discover", "searchPlaceholder": "Search books..." },
+  "nav": {
+    "home": "Home",
+    "quran": "Quran",
+    "hadith": "Hadith",
+    "prayer": "Prayer",
+    "library": "Library",
+    "assistant": "Assistant",
+    "settings": "Settings",
+    "more": "More"
+  },
+  "more": {
+    "title": "More",
+    "tasbih": "Tasbih Counter",
+    "duas": "Duas",
+    "names": "99 Names of Allah",
+    "bookmarks": "Bookmarks",
+    "ramadan": "Ramadan Mode"
+  },
+  "home": {
+    "greeting": "Assalamu Alaikum",
+    "continueReading": "Continue Reading",
+    "quickAccess": "Quick Access",
+    "saved": "Saved"
+  },
+  "quran": {
+    "surahs": "Surahs",
+    "ayahs": "Ayahs",
+    "meccan": "Meccan",
+    "medinan": "Medinan",
+    "bySurah": "By Surah",
+    "byJuz": "By Juz / Para"
+  },
+  "hadith": {
+    "continueReading": "Continue reading",
+    "allChapters": "All Chapters"
+  },
+  "library": {
+    "discover": "Discover",
+    "searchPlaceholder": "Search books..."
+  },
   "prayer": {
-    "prayerTimes": "Prayer Times", "qibla": "Qibla Direction", "nextPrayer": "Next Prayer",
-    "enableAll": "Enable All Prayer Reminders", "sunrise": "Sunrise",
-    "towardMecca": "toward Mecca", "fromNorth": "from North"
+    "prayerTimes": "Prayer Times",
+    "qibla": "Qibla Direction",
+    "nextPrayer": "Next Prayer",
+    "enableAll": "Enable All Prayer Reminders",
+    "sunrise": "Sunrise",
+    "towardMecca": "toward Mecca",
+    "fromNorth": "from North"
   },
-  "assistant": { "title": "AI Assistant", "placeholder": "Ask a question...", "guestPrompt": "Sign in to chat with the AI reading assistant.", "thinking": "Thinking..." },
+  "assistant": {
+    "title": "AI Assistant",
+    "placeholder": "Ask a question...",
+    "guestPrompt": "Sign in to chat with the AI reading assistant.",
+    "thinking": "Thinking..."
+  },
   "settings": {
-    "language": "Language", "about": "About", "account": "Account", "signOut": "Sign Out",
-    "guestLabel": "Browsing as guest", "dataStorage": "Data & Storage",
-    "viewBookmarks": "View Bookmarks", "clearCache": "Clear Offline Cache",
-    "clearCacheMeta": "Keeps bookmarks", "cacheCleared": "Cache cleared",
-    "clearBookmarks": "Clear All Bookmarks", "bookmarks": "Bookmarks"
+    "language": "Language",
+    "about": "About",
+    "account": "Account",
+    "signOut": "Sign Out",
+    "guestLabel": "Browsing as guest",
+    "dataStorage": "Data & Storage",
+    "viewBookmarks": "View Bookmarks",
+    "clearCache": "Clear Offline Cache",
+    "clearCacheMeta": "Keeps bookmarks",
+    "cacheCleared": "Cache cleared",
+    "clearBookmarks": "Clear All Bookmarks",
+    "bookmarks": "Bookmarks"
   },
   "auth": {
-    "welcomeTitle": "Welcome to KitaabAI", "welcomeSubtitle": "Sign in to sync your reading across devices.",
-    "name": "Name", "email": "Email", "password": "Password",
-    "signIn": "Sign In", "signUp": "Create Account",
+    "welcomeTitle": "Welcome to KitaabAI",
+    "welcomeSubtitle": "Sign in to sync your reading across devices.",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign In",
+    "signUp": "Create Account",
     "noAccount": "Don't have an account? Sign up",
     "haveAccount": "Already have an account? Sign in",
-    "forgotPassword": "Forgot password?", "continueAsGuest": "Continue as Guest",
+    "forgotPassword": "Forgot password?",
+    "continueAsGuest": "Continue as Guest",
     "resetPasswordSent": "Password reset email sent — check your inbox.",
     "notConfiguredNotice": "Firebase isn't configured yet. Add your keys to .env, or continue as guest."
   }

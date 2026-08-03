@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Easing, Linking, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Image, Linking, Modal, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -12,44 +12,23 @@ import { PrayerTimeRow } from '../../components/prayer/PrayerTimeRow';
 import { NextPrayerCountdown } from '../../components/prayer/NextPrayerCountdown';
 import { QiblaDirection } from '../../components/prayer/QiblaDirection';
 import { fetchPrayerTimesByCoords, fetchPrayerTimesByCity } from '../../services/api/prayerTimesApi';
-import { requestNotificationPermission, schedulePrayerNotifications, cancelPrayerNotifications, getScheduledPrayerNames } from '../../services/notifications/prayerNotifications';
+import { requestNotificationPermission, schedulePrayerNotifications, cancelPrayerNotifications, getScheduledPrayerNames, loadNotifOffsets } from '../../services/notifications/prayerNotifications';
+import { BackButton } from '../../components/common/BackButton';
+import { OfflineBanner } from '../../components/common/OfflineBanner';
+import { getTodayHijri } from '../../services/hijri/hijriCalendar';
 import { PrayerName, PrayerTimes, PRAYER_NAMES, PrayerCalculationMethod, PRAYER_METHODS } from '../../types/models';
+import { getNextPrayer, getCurrentPrayer, getMinutesUntil } from '../../utils/prayerUtils';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { colors, radius, shadow, spacing, typography } from '../../theme';
 
 const DEFAULT_CITY    = 'Karachi';
 const DEFAULT_COUNTRY = 'Pakistan';
 const METHOD_KEY      = 'kitaabai.prayer.method';
-
-function getNextPrayer(times: PrayerTimes): PrayerName {
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  for (const prayer of PRAYER_NAMES) {
-    const match = times[prayer].match(/^(\d{1,2}):(\d{2})/);
-    if (!match) continue;
-    if (parseInt(match[1], 10) * 60 + parseInt(match[2], 10) > nowMinutes) return prayer;
-  }
-  return 'Fajr';
-}
-
-function getCurrentPrayer(times: PrayerTimes): PrayerName | null {
-  const next = getNextPrayer(times);
-  const nextIdx = PRAYER_NAMES.indexOf(next);
-  if (nextIdx === 0) return null; // before Fajr
-  return PRAYER_NAMES[nextIdx - 1];
-}
-
-function getMinutesUntil(times: PrayerTimes, prayer: PrayerName): number {
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const match = times[prayer].match(/^(\d{1,2}):(\d{2})/);
-  if (!match) return 0;
-  const prayerMinutes = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
-  const diff = prayerMinutes - nowMinutes;
-  return diff > 0 ? diff : 1440 + diff;
-}
+const NOTIF_KEY       = 'ilmai.prayer.notifications';
 
 export function PrayerScreen() {
   const { t } = useTranslation();
+  const { isDark, surface, surfaceElevated, border, textPrimary, textSecondary } = useThemeColors();
   const [prayerTimes, setPrayerTimes]     = useState<PrayerTimes | null>(null);
   const [isLoading, setIsLoading]         = useState(true);
   const [error, setError]                 = useState<string | null>(null);
@@ -59,7 +38,8 @@ export function PrayerScreen() {
   const [notifPermission, setNotifPermission] = useState(false);
   const [calcMethod, setCalcMethod]       = useState<PrayerCalculationMethod>(2);
   const [methodPickerOpen, setMethodPickerOpen] = useState(false);
-  
+  const [refreshing, setRefreshing]       = useState(false);
+
   const [alertConfig, setAlertConfig] = useState<{
     visible: boolean; title: string; message?: string; buttons?: any[];
   }>({ visible: false, title: '' });
@@ -127,27 +107,63 @@ export function PrayerScreen() {
     } catch { /* silent */ }
   };
 
+  const persistEnabledPrayers = useCallback(async (next: Set<PrayerName>) => {
+    try {
+      await AsyncStorage.setItem(NOTIF_KEY, JSON.stringify(Array.from(next)));
+    } catch {}
+  }, []);
+
   const loadNotifState = useCallback(async () => {
     if (notifLoaded.current) return;
     notifLoaded.current = true;
     const granted = await requestNotificationPermission();
     setNotifPermission(granted);
-    if (granted) setEnabledPrayers(await getScheduledPrayerNames());
+    // Load from AsyncStorage first for instant UI, then reconcile with scheduled notifications
+    try {
+      const saved = await AsyncStorage.getItem(NOTIF_KEY);
+      if (saved) {
+        const parsed: string[] = JSON.parse(saved);
+        const fromStorage = new Set<PrayerName>(
+          parsed.filter((n): n is PrayerName => (PRAYER_NAMES as string[]).includes(n))
+        );
+        setEnabledPrayers(fromStorage);
+      }
+    } catch {}
+    if (granted) {
+      const scheduled = await getScheduledPrayerNames();
+      setEnabledPrayers(new Set<PrayerName>(scheduled));
+    }
   }, []);
 
   useEffect(() => { load(); loadNotifState(); }, [load, loadNotifState]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
   const handleTogglePrayer = async (prayer: PrayerName, enabled: boolean) => {
     if (!notifPermission) {
-      showAlert('Allow Notifications', 'KitaabAI needs notification permission to send prayer reminders.',
-        [{ text: 'Cancel', style: 'cancel' }, { text: 'Open Settings', onPress: () => Linking.openSettings() }]);
-      return;
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        showAlert('Allow Notifications', 'KitaabAI needs notification permission to send prayer reminders.',
+          [{ text: 'Cancel', style: 'cancel' }, { text: 'Open Settings', onPress: () => Linking.openSettings() }]);
+        return;
+      }
+      setNotifPermission(true);
     }
     if (!prayerTimes) return;
     const next = new Set(enabledPrayers);
     enabled ? next.add(prayer) : next.delete(prayer);
     setEnabledPrayers(next);
-    next.size === 0 ? await cancelPrayerNotifications() : await schedulePrayerNotifications(prayerTimes, next);
+    await persistEnabledPrayers(next);
+    if (next.size === 0) {
+      await cancelPrayerNotifications();
+    } else {
+      const offsets = await loadNotifOffsets();
+      await schedulePrayerNotifications(prayerTimes, next, offsets);
+    }
   };
 
   const handleEnableAll = async () => {
@@ -160,35 +176,47 @@ export function PrayerScreen() {
     setNotifPermission(true);
     const all = new Set<PrayerName>(PRAYER_NAMES);
     setEnabledPrayers(all);
-    await schedulePrayerNotifications(prayerTimes, all);
+    await persistEnabledPrayers(all);
+    const offsets = await loadNotifOffsets();
+    await schedulePrayerNotifications(prayerTimes, all, offsets);
   };
 
-  if (isLoading) return <ScreenContainer><LoadingView message="Fetching prayer times…" /></ScreenContainer>;
+  const handleDisableAll = async () => {
+    const empty = new Set<PrayerName>();
+    setEnabledPrayers(empty);
+    await persistEnabledPrayers(empty);
+    await cancelPrayerNotifications();
+  };
+
+  if (isLoading && !refreshing) return <ScreenContainer><LoadingView message="Fetching prayer times…" /></ScreenContainer>;
   if (error || !prayerTimes) return <ScreenContainer><ErrorView message={error ?? 'Could not load prayer times.'} onRetry={load} /></ScreenContainer>;
 
   const nextPrayer    = getNextPrayer(prayerTimes);
   const currentPrayer = getCurrentPrayer(prayerTimes);
   const minsUntilNext = getMinutesUntil(prayerTimes, nextPrayer);
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const hijri = getTodayHijri();
   const methodLabel = PRAYER_METHODS.find(m => m.value === calcMethod)?.label ?? '';
 
   return (
     <ScreenContainer noPadding>
+      <OfflineBanner />
       <StatusBar barStyle="light-content" />
 
       {/* Method picker modal */}
       <Modal visible={methodPickerOpen} transparent animationType="slide" onRequestClose={() => setMethodPickerOpen(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.methodPanel}>
-            <View style={styles.methodHandle} />
-            <Text style={styles.methodTitle}>Calculation Method</Text>
+          <View style={[styles.methodPanel, { backgroundColor: surface }]}>
+            <View style={[styles.methodHandle, { backgroundColor: border }]} />
+            <Text style={[styles.methodTitle, { color: textPrimary }]}>Calculation Method</Text>
             {PRAYER_METHODS.map(m => (
               <TouchableOpacity
                 key={m.value}
-                style={[styles.methodRow, calcMethod === m.value && styles.methodRowActive]}
+                style={[styles.methodRow, { borderColor: border }, calcMethod === m.value && styles.methodRowActive]}
                 onPress={() => handleChangeMethod(m.value)}
+                activeOpacity={0.75}
               >
-                <Text style={[styles.methodLabel, calcMethod === m.value && styles.methodLabelActive]} numberOfLines={2}>
+                <Text style={[styles.methodLabel, { color: textSecondary }, calcMethod === m.value && styles.methodLabelActive]} numberOfLines={2}>
                   {m.label}
                 </Text>
                 {calcMethod === m.value && (
@@ -200,37 +228,57 @@ export function PrayerScreen() {
         </View>
       </Modal>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4ADE80" colors={['#4ADE80']} />
+        }
+      >
 
         {/* ── Hero Header ── */}
         <LinearGradient colors={['#060C1F', '#062316', '#0B3D2E']} style={styles.hero}>
+          <Image source={require('../../../assets/images/prayerscreenheader.png')} style={styles.heroBgImage} resizeMode="cover" />
+          <View style={styles.heroScrim} />
           <View style={styles.heroDecor1} />
           <View style={styles.heroDecor2} />
 
-          <Animated.View style={{ opacity: headerOpacity, transform: [{ translateY: headerSlide }] }}>
-            <View style={styles.heroTop}>
+          {/* Back button row */}
+          <View style={styles.heroNavRow}>
+            <BackButton />
+            <View style={styles.heroPillsRow}>
               <View style={styles.locationPill}>
-                <Ionicons name="location" size={13} color="#4ADE80" />
-                <Text style={styles.locationText}>{locationName}</Text>
+                <Ionicons name="location" size={12} color="#4ADE80" />
+                <Text style={styles.locationText} numberOfLines={1}>{locationName}</Text>
               </View>
-              <Text style={styles.dateText}>{today}</Text>
+              <View style={styles.datePill}>
+                <Ionicons name="calendar-outline" size={12} color="rgba(255,255,255,0.5)" />
+                <Text style={styles.datePillText}>{today}</Text>
+              </View>
+              <View style={styles.hijriPill}>
+                <Text style={[styles.hijriPillAr, { fontFamily: 'Amiri_400Regular' }]}>{hijri.day} {hijri.monthNameAr}</Text>
+                <Text style={styles.hijriPillEn}>{hijri.year} AH</Text>
+              </View>
             </View>
+          </View>
 
+          <Animated.View style={{ opacity: headerOpacity, transform: [{ translateY: headerSlide }] }}>
             <NextPrayerCountdown prayerTimes={prayerTimes} />
 
-            {/* Method button */}
-            <TouchableOpacity style={styles.methodBtn} onPress={() => setMethodPickerOpen(true)}>
-              <Ionicons name="calculator-outline" size={13} color="rgba(255,255,255,0.5)" />
-              <Text style={styles.methodBtnText} numberOfLines={1}>{methodLabel}</Text>
-              <Ionicons name="chevron-down" size={12} color="rgba(255,255,255,0.4)" />
-            </TouchableOpacity>
-
-            {enabledPrayers.size === 0 && (
-              <TouchableOpacity style={styles.enableAllBtn} onPress={handleEnableAll} activeOpacity={0.85}>
-                <Ionicons name="notifications" size={16} color={colors.navy[900]} />
-                <Text style={styles.enableAllLabel}>Enable Prayer Reminders</Text>
+            {/* Method + Notification row */}
+            <View style={styles.heroActions}>
+              <TouchableOpacity style={styles.methodBtn} onPress={() => setMethodPickerOpen(true)} activeOpacity={0.75}>
+                <Ionicons name="calculator-outline" size={12} color="rgba(255,255,255,0.5)" />
+                <Text style={styles.methodBtnText} numberOfLines={1}>{methodLabel}</Text>
+                <Ionicons name="chevron-down" size={11} color="rgba(255,255,255,0.35)" />
               </TouchableOpacity>
-            )}
+              {enabledPrayers.size === 0 && (
+                <TouchableOpacity style={styles.enableAllBtn} onPress={handleEnableAll} activeOpacity={0.85}>
+                  <Ionicons name="notifications" size={13} color={colors.navy[900]} />
+                  <Text style={styles.enableAllLabel}>Reminders</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </Animated.View>
         </LinearGradient>
 
@@ -238,14 +286,24 @@ export function PrayerScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="time" size={14} color="#4ADE80" />
-            <Text style={[styles.sectionTitle, { color: colors.parchment[950] }]}>Prayer Times</Text>
-            <View style={styles.nextBadge}>
-              <View style={styles.nextDot} />
-              <Text style={styles.nextText}>{nextPrayer} next</Text>
-            </View>
+            <Text style={[styles.sectionTitle, { color: textPrimary }]}>Prayer Times</Text>
+            <TouchableOpacity
+              onPress={enabledPrayers.size === PRAYER_NAMES.length ? handleDisableAll : handleEnableAll}
+              style={[styles.allToggleBtn, { borderColor: border }]}
+              activeOpacity={0.75}
+            >
+              <Ionicons
+                name={enabledPrayers.size === PRAYER_NAMES.length ? 'notifications' : 'notifications-outline'}
+                size={12}
+                color={enabledPrayers.size === PRAYER_NAMES.length ? colors.gold[600] : textSecondary}
+              />
+              <Text style={[styles.allToggleBtnText, { color: enabledPrayers.size === PRAYER_NAMES.length ? colors.gold[600] : textSecondary }]}>
+                {enabledPrayers.size === PRAYER_NAMES.length ? 'Mute all' : 'Notify all'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.prayerGroup}>
+          <View style={[styles.prayerGroup, { backgroundColor: surface, borderColor: border }]}>
             {PRAYER_NAMES.map((prayer, index) => (
               <View key={prayer}>
                 <PrayerTimeRow
@@ -257,7 +315,7 @@ export function PrayerScreen() {
                   notificationsEnabled={enabledPrayers.has(prayer)}
                   onToggleNotification={(enabled) => handleTogglePrayer(prayer, enabled)}
                 />
-                {index < PRAYER_NAMES.length - 1 && <View style={styles.rowDivider} />}
+                {index < PRAYER_NAMES.length - 1 && <View style={[styles.rowDivider, { backgroundColor: border }]} />}
               </View>
             ))}
           </View>
@@ -272,8 +330,8 @@ export function PrayerScreen() {
         {coords && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="compass" size={14} color="#F59E0B" />
-              <Text style={[styles.sectionTitle, { color: colors.parchment[950] }]}>{t('prayer.qibla')}</Text>
+              <Image source={require('../../../assets/images/kabba.png')} style={{ width: 18, height: 18 }} resizeMode="contain" />
+              <Text style={[styles.sectionTitle, { color: textPrimary }]}>{t('prayer.qibla')}</Text>
             </View>
             <View style={styles.qiblaCard}>
               <QiblaDirection latitude={coords.latitude} longitude={coords.longitude} />
@@ -296,23 +354,31 @@ export function PrayerScreen() {
 const styles = StyleSheet.create({
   scrollContent: { paddingBottom: spacing.xxxl },
 
-  hero: { paddingTop: spacing.xl + spacing.xl, paddingBottom: spacing.xxl, paddingHorizontal: spacing.lg, overflow: 'hidden', marginBottom: spacing.sm },
-  heroDecor1: { position: 'absolute', right: -50, top: -50, width: 180, height: 180, borderRadius: 90, borderWidth: 1, borderColor: 'rgba(74,222,128,0.15)' },
-  heroDecor2: { position: 'absolute', left: -40, bottom: -50, width: 160, height: 160, borderRadius: 80, borderWidth: 1, borderColor: 'rgba(74,222,128,0.07)' },
-  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
-  locationPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(74,222,128,0.15)', borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(74,222,128,0.25)' },
-  locationText: { ...typography.caption, color: '#4ADE80', fontWeight: '700' },
-  dateText: { ...typography.caption, color: 'rgba(255,255,255,0.3)' },
+  hero: { paddingTop: 48, paddingBottom: spacing.xl, paddingHorizontal: spacing.lg, overflow: 'hidden', marginBottom: spacing.sm },
+  heroBgImage: { position: 'absolute', right: 0, bottom: 0, width: '100%', height: '130%', opacity: 0.35 },
+  heroScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(6,12,31,0.5)' },
+  heroDecor1: { position: 'absolute', right: -50, top: -50, width: 180, height: 180, borderRadius: 90, borderWidth: 1, borderColor: 'rgba(74,222,128,0.12)' },
+  heroDecor2: { position: 'absolute', left: -40, bottom: -50, width: 160, height: 160, borderRadius: 80, borderWidth: 1, borderColor: 'rgba(74,222,128,0.06)' },
+  heroNavRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  heroPillsRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' },
+  locationPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(74,222,128,0.12)', borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(74,222,128,0.22)' },
+  locationText: { fontSize: 11, color: '#4ADE80', fontWeight: '700', maxWidth: 120 },
+  datePill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  datePillText: { fontSize: 10, color: 'rgba(255,255,255,0.45)', fontWeight: '500' },
+  hijriPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(212,169,62,0.12)', borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(212,169,62,0.22)' },
+  hijriPillAr: { fontSize: 11, color: colors.gold[300] },
+  hijriPillEn: { fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: '500' },
+  heroActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm, flexWrap: 'wrap' },
   methodBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: radius.pill,
-    paddingHorizontal: spacing.md, paddingVertical: 5,
+    paddingHorizontal: spacing.sm, paddingVertical: 5,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    marginTop: spacing.md, alignSelf: 'flex-start', maxWidth: '100%',
+    maxWidth: 200,
   },
   methodBtnText: { fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: '500', flex: 1 },
-  enableAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: '#4ADE80', borderRadius: radius.pill, paddingVertical: spacing.md, marginTop: spacing.lg },
-  enableAllLabel: { ...typography.subheading, color: colors.navy[900] },
+  enableAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(74,222,128,0.18)', borderRadius: radius.pill, paddingVertical: 5, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: 'rgba(74,222,128,0.35)' },
+  enableAllLabel: { fontSize: 12, color: '#4ADE80', fontWeight: '700' },
 
   section: { paddingHorizontal: spacing.lg, marginBottom: spacing.xl },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
@@ -321,12 +387,15 @@ const styles = StyleSheet.create({
   nextDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#4ADE80' },
   nextText: { fontSize: 11, color: '#4ADE80', fontWeight: '700' },
 
-  prayerGroup: { backgroundColor: colors.white, borderRadius: radius.md, overflow: 'hidden', ...shadow.md },
+  prayerGroup: { borderRadius: radius.lg, overflow: 'hidden', ...shadow.md, borderWidth: 1 },
   rowDivider: { height: 1, backgroundColor: colors.parchment[100], marginLeft: spacing.lg },
   sunriseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, justifyContent: 'center', marginTop: spacing.md },
   sunriseMeta: { ...typography.caption, color: colors.parchment[500] },
 
   qiblaCard: { backgroundColor: colors.navy[900], borderRadius: radius.md, overflow: 'hidden', ...shadow.navy },
+
+  allToggleBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 5, borderWidth: 1 },
+  allToggleBtnText: { fontSize: 12, fontWeight: '600' },
 
   // Method picker
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },

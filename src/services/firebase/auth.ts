@@ -8,9 +8,6 @@ import {
   User,
   GoogleAuthProvider,
   signInWithCredential,
-  signInWithPhoneNumber,
-  ApplicationVerifier,
-  ConfirmationResult
 } from 'firebase/auth';
 import { getFirebaseAuth } from './config';
 
@@ -52,23 +49,14 @@ export async function resetPassword(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
 }
 
-export async function signInWithGoogleCredential(idToken: string): Promise<User> {
+export async function signInWithGoogleAccessToken(accessToken: string): Promise<User> {
   const auth = requireAuth();
-  const credential = GoogleAuthProvider.credential(idToken);
+  const credential = GoogleAuthProvider.credential(null, accessToken);
   const userCredential = await signInWithCredential(auth, credential);
   return userCredential.user;
 }
 
-export async function sendPhoneVerificationCode(phoneNumber: string, applicationVerifier: ApplicationVerifier): Promise<ConfirmationResult> {
-  const auth = requireAuth();
-  return signInWithPhoneNumber(auth, phoneNumber, applicationVerifier);
-}
 
-/**
- * Subscribes to auth state changes. Returns an unsubscribe function.
- * If Firebase isn't configured yet, immediately calls back with null
- * so the app can still boot into guest mode.
- */
 export function subscribeToAuthChanges(callback: (user: User | null) => void): () => void {
   const auth = getFirebaseAuth();
   if (!auth) {

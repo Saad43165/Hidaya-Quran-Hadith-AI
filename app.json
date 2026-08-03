@@ -1,28 +1,28 @@
 {
   "expo": {
-    "name": "Hidaya",
+    "name": "IlmAI",
     "slug": "hidaya",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "scheme": "kitaabai",
+    "userInterfaceStyle": "automatic",
+    "scheme": "ilmai",
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
+      "image": "./assets/images/splashscreen.png",
+      "resizeMode": "cover",
       "backgroundColor": "#0B1330"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.kitaabai.app",
+      "bundleIdentifier": "com.ilmai.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "KitaabAI uses your location to show accurate prayer times and Qibla direction.",
-        "NSMotionUsageDescription": "KitaabAI uses the compass sensor to show Qibla direction.",
-        "NSMicrophoneUsageDescription": "KitaabAI does not use the microphone."
+        "NSLocationWhenInUseUsageDescription": "IlmAI uses your location to show accurate prayer times and Qibla direction.",
+        "NSMotionUsageDescription": "IlmAI uses the compass sensor to show Qibla direction.",
+        "NSMicrophoneUsageDescription": "IlmAI does not use the microphone."
       }
     },
     "android": {
-      "package": "com.kitaabai.app",
+      "package": "com.ilmai.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -34,8 +34,9 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
-        "android.permission.USE_BIOMETRIC",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
     "web": {
@@ -48,7 +49,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "KitaabAI uses your location to show accurate prayer times and Qibla direction."
+          "locationWhenInUsePermission": "IlmAI uses your location to show accurate prayer times and Qibla direction."
         }
       ],
       [
@@ -63,9 +64,11 @@
       "expo-audio"
     ],
     "extra": {
+      "privacyPolicyUrl": "https://gist.githubusercontent.com/Saad43165/fd193405dc0714aafca70569d3f60f07/raw/6ea4233587143fc9e80dfffd335a5f0ce5de2440/gistfile1.txt",
       "eas": {
         "projectId": "1b004f5f-07ab-4a0f-b21f-14dc011ad110"
       }
-    }
+    },
+    "owner": "saad112"
   }
 }

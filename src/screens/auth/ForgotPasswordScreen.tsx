@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthTextInput } from '../../components/auth/AuthTextInput';
 import { AuthButton } from '../../components/auth/AuthButton';
+import { BackButton } from '../../components/common/BackButton';
 import { resetPassword } from '../../services/firebase/auth';
 import { getAuthErrorMessage } from '../../services/firebase/authErrors';
 import { colors, gradients, radius, spacing, typography } from '../../theme';
@@ -36,9 +37,9 @@ export function ForgotPasswordScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient colors={gradients.heroNavy} style={styles.topPanel}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => nav.goBack()}>
-          <Ionicons name="chevron-back" size={22} color={colors.gold[400]} />
-        </TouchableOpacity>
+        <Image source={require('../../../assets/images/hadithscreenheader.png')} style={styles.heroBgImage} resizeMode="cover" />
+        <View style={styles.heroScrim} />
+        <BackButton style={styles.backBtn} />
         <View style={styles.iconWrap}>
           <Ionicons name="mail-unread-outline" size={32} color={colors.gold[400]} />
         </View>
@@ -97,7 +98,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.xl,
     gap: spacing.sm,
+    overflow: 'hidden',
   },
+  heroBgImage: { position: 'absolute', right: 0, bottom: 0, width: '100%', height: '130%', opacity: 0.22 },
+  heroScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(6,12,31,0.55)' },
   backBtn: {
     width: 36, height: 36, borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.1)',

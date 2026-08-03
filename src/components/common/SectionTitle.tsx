@@ -13,7 +13,7 @@ export function SectionTitle({ title, actionLabel, onActionPress }: Props) {
     <View style={styles.row}>
       <Text style={styles.title}>{title}</Text>
       {actionLabel ? (
-        <TouchableOpacity onPress={onActionPress}>
+        <TouchableOpacity onPress={onActionPress} activeOpacity={0.7}>
           <Text style={styles.action}>{actionLabel}</Text>
         </TouchableOpacity>
       ) : null}

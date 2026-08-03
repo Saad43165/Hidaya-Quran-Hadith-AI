@@ -20,14 +20,21 @@ export async function searchQuran(query: string, language: string = 'en'): Promi
   const cacheKey = `search:quran:${language}:${query.toLowerCase().trim()}`;
   return fetchWithCache(cacheKey, async () => {
     const edition = language === 'ur' ? 'ur.ahmedali' : 'en.sahih';
-    const { data } = await quranClient.get(`/search/${encodeURIComponent(query)}/${edition}`);
-    const matches = data?.data?.matches ?? [];
+    // Search returns results in the translation edition; fetch Arabic separately in parallel
+    const [transResp, arResp] = await Promise.all([
+      quranClient.get(`/search/${encodeURIComponent(query)}/all/${edition}`),
+      quranClient.get(`/search/${encodeURIComponent(query)}/all/ar.alafasy`).catch(() => ({ data: null })),
+    ]);
+    const matches: any[] = transResp.data?.data?.matches ?? [];
+    const arMatches: any[] = arResp.data?.data?.matches ?? [];
+    const arMap = new Map<string, string>();
+    arMatches.forEach((m: any) => arMap.set(`${m.surah.number}:${m.numberInSurah}`, m.text ?? ''));
     return matches.map((m: any) => ({
       surahNumber: m.surah.number,
       surahName: m.surah.name,
       surahEnglishName: m.surah.englishName,
       ayahNumber: m.numberInSurah,
-      arabicText: m.text ?? '',
+      arabicText: arMap.get(`${m.surah.number}:${m.numberInSurah}`) ?? '',
       translationText: m.text ?? '',
     }));
   });
